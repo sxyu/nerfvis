@@ -529,9 +529,9 @@ class Scene:
             radius = (self.bb_max - self.bb_min) * 0.5
         radius *= scale
 
-        if isinstance(center, list):
+        if isinstance(center, list) or isinstance(center, tuple):
             center = np.array(center)
-        if isinstance(radius, list):
+        if isinstance(radius, list) or isinstance(radius, tuple):
             radius = np.array(radius)
         self._update_bb(center - radius)
         self._update_bb(center + radius)

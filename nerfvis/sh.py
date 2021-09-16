@@ -350,6 +350,7 @@ def project_function_sparse(
            sample_count, batch_size * C) # [sample_count, batch_size * C]
     soln = torch.lstsq(func_value, basis_vals).solution[:basis_vals.size(1)]
     soln = soln.T.reshape(batch_size, -1)
+    others = others[:, :1, :]
     others = others.reshape(batch_size, -1)
     return soln, others
 
