@@ -2,6 +2,8 @@ NeRF visualization library using PlenOctrees, under construction
 
 `pip install nerfvis`
 
+Docs will be at: https://nerfvis.readthedocs.org
+
 ```python
 import nerfvis
 scene = nerfvis.Scene("My title")
