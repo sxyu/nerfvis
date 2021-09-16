@@ -1,0 +1,9 @@
+include README.md
+include LICENSE.txt
+include MANIFEST.in
+include setup.py
+include nerfvis/scene.py
+include nerfvis/sh.py
+include nerfvis/__init__.py
+include nerfvis/volrend.zip
+include nerfvis/version.py
