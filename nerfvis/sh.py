@@ -265,8 +265,15 @@ def EvalSH(l: int, m: int, dirs):
 
 def spherical_uniform_sampling(sample_count, device="cpu"):
     # See: https://www.bogotobogo.com/Algorithms/uniform_distribution_sphere.php
-    theta = torch.acos(2.0 * torch.rand([sample_count]) - 1.0)
-    phi = 2.0 * math.pi * torch.rand([sample_count])
+    u1 = torch.arange(0, sample_count, dtype=torch.float32, device=device) + \
+         torch.rand([sample_count], dtype=torch.float32, device=device)
+    u1 /= sample_count
+    u2 = torch.arange(0, sample_count, dtype=torch.float32, device=device) + \
+         torch.rand([sample_count], dtype=torch.float32, device=device)
+    u2 /= sample_count
+    u2 = u2[torch.randperm(sample_count, device=device)]
+    theta = torch.acos(2.0 * u1 - 1.0)
+    phi = 2.0 * math.pi * u2
     return theta.to(device), phi.to(device)
 
 
