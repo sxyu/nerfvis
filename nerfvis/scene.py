@@ -527,12 +527,12 @@ class Scene:
             center = (self.bb_min + self.bb_max) * 0.5
         if radius is None and not np.isinf(self.bb_min).any():
             radius = (self.bb_max - self.bb_min) * 0.5
-        radius *= scale
 
         if isinstance(center, list) or isinstance(center, tuple):
             center = np.array(center)
         if isinstance(radius, list) or isinstance(radius, tuple):
             radius = np.array(radius)
+        radius *= scale
         self._update_bb(center - radius)
         self._update_bb(center + radius)
         print("* Discretizing NeRF (requires torch, tqdm, svox, scipy)")
