@@ -4,6 +4,8 @@
 
 This will visualize the silica model provided in the `nerf_pl` repo using `nerfvis`.
 
+nerf_pl repo link: https://github.com/kwea123/nerf_pl
+
 - A hardcoded bounding box will be used for the NeRF
 - SH projection will be used to visualize the view-dependency (by simply setting `use_dirs=True` with default SH projection parameters)
 - Default sigma threshold is used; to use the more advanced weight thresholding, you can try to grab `r, t, focal_length, image_width, image_height` from the dataset and pass them to `set_nerf`
