@@ -6,6 +6,14 @@ Docs: https://nerfvis.readthedocs.org
 
 Based on PlenOctrees: https://github.com/sxyu/plenoctrees
 
+![Screenshot DTU skull](https://raw.githubusercontent.com/sxyu/nerfvis/master/img/skull.gif)
+
+![Screenshot NeRF-- Drone](https://raw.githubusercontent.com/sxyu/nerfvis/master/img/youtube_drone.gif)
+
+
+Example: see `examples/`; currently contains an example for nerf_pl:
+![Basic silica low ](https://raw.githubusercontent.com/sxyu/nerfvis/master/img/silica_low.gif)
+
 ```python
 import nerfvis
 scene = nerfvis.Scene("My title")
