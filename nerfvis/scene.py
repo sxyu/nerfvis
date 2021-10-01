@@ -253,12 +253,14 @@ class Scene:
 
     def add_points(self, name : str,
                    points : np.ndarray,
+                   point_size : float = 1.0,
                    **kwargs):
         """
         Add a point cloud (in browser, points are always size 1 right now)
 
         :param name: an identifier for this object
         :param points: (N, 3) float, list of points
+        :param point_size: float, point size
         :param color: (3,) color, default is orange (common param)
         :param vert_color: (N, 3) vertex color, optional (overrides color) (common param)
         :param translation: (3,), model translation (common param)
@@ -271,6 +273,8 @@ class Scene:
         self._add_common(name, **kwargs)
         self.fields[name] = "points"
         self.fields[_f(name, "points")] = np.array(points).astype(np.float32)
+        if point_size != 1.0:
+            self.fields[_f(name, "point_size")] = np.float32(point_size)
         self._update_bb(points, **kwargs)
 
     def add_mesh(self, name : str,
