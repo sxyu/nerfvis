@@ -163,6 +163,8 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "cube"
@@ -187,6 +189,8 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "sphere"
@@ -216,6 +220,8 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "line"
@@ -243,6 +249,8 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "lines"
@@ -269,6 +277,8 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "points"
@@ -299,6 +309,8 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "mesh"
@@ -347,6 +359,8 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
         :param update_view: bool, if true then updates the camera position, scene origin etc
                             using these cameras
         """
@@ -413,6 +427,8 @@ class Scene:
         :param path: the path to the mesh file
         :param name_suffix: object name will be basename(path) + name_suffix
         :param center: if true, centers object to mean
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
 
         Rest of keyword arguments passed to add_mesh
         """
@@ -433,6 +449,8 @@ class Scene:
 
         :param name: identifier, default "axes"
         :param length: float, length of axes
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
 
         Rest of keyword arguments passed to add_lines
         """
