@@ -25,6 +25,13 @@ scene.display(port=8889)
 # (you may have to forward the port and enter localhost:8889 manually if over ssh)
 ```
 
+You can also add meshes, points, lines (see docs).
+Note that each object e.g. cube, mesh, points, etc. must have a unique name to identify it
+right now. You may programmatically generate this. They will show up in the *layers* pane
+(top right of the html viewer)
+**New in 0.0.6: Use / in the name e.g. cubes/red/cube001 to put meshes into folders in the layers pane.**
+
+
 Please also `pip install torch svox tqdm scipy` for adding NeRF (`set_nerf`)
 or `pip install trimesh` for using `add_mesh_from_file(path)`.
 
