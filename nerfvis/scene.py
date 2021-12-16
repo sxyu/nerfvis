@@ -726,7 +726,8 @@ class Scene:
             tree_file : Optional[str] = None,
             instructions : List[str] = [],
             url : str = 'localhost',
-            port : int = 8889):
+            port : int = 8889,
+            open_browser : bool = True):
         """
         Write to a standalone web viewer
 
@@ -745,8 +746,9 @@ class Scene:
                           file from that is used. You have to put this in the output folder
                           yourself afterwards
         :param instructions: list of additional javascript instructions to execute (advanced)
-        :param url: URL for server (if display=True) default localhost
-        :param port: port for server (if display=True) default 8889
+        :param url: str, URL for server (if display=True) default localhost
+        :param port: int, port for server (if display=True) default 8889
+        :param open_browser: bool, if true then opens the web browser, if possible (default)
         """
         if dirname is None:
             import tempfile
@@ -841,15 +843,16 @@ class Scene:
             server = HTTPServer(('', port), LocalHandler)
 
             print(f'Serving {url}:{port}')
-            import webbrowser
-            import threading
-            def open_webbrowser():
-                if not webbrowser.open_new(f'{url}:{port}'):
-                    print('Could not open web browser',
-                          '(note: server still launched, '
-                          'please just open given port manually, using port forarding)')
-            t=threading.Thread(target=open_webbrowser)
-            t.start()
+            if open_browser:
+                import webbrowser
+                import threading
+                def open_webbrowser():
+                    if not webbrowser.open_new(f'{url}:{port}'):
+                        print('Could not open web browser',
+                              '(note: server still launched, '
+                              'please just open given port manually, using port forarding)')
+                t=threading.Thread(target=open_webbrowser)
+                t.start()
             server.serve_forever()
 
     def display(self, *args, **kwargs):
