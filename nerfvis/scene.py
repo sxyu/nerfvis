@@ -153,7 +153,7 @@ class Scene:
 
     def add_cube(self, name : str, **kwargs):
         """
-        Add a cube with side length 1.
+        Add a cube with side length 1 (verts {-0.5, 0.5}^3).
 
         :param name: an identifier for this object
         :param color: (3,) color, default is orange (common param)
@@ -172,6 +172,46 @@ class Scene:
         p2 = np.array([0.5, 0.5, 0.5])
         self._update_bb(p1, **kwargs)
         self._update_bb(p2, **kwargs)
+
+    def add_wireframe_cube(self, name : str, **kwargs):
+        """
+        Add a wireframe cube with side length 1 (verts {-0.5, 0.5}^3).
+        Uses add_lines.
+
+        :param name: an identifier for this object
+        :param color: (3,) color, default is orange (common param)
+        :param vert_color: (36, 3) vertex color, optional advanced (common param)
+        :param translation: (3,), model translation (common param)
+        :param rotation: (3,), model rotation in axis-angle (common param)
+        :param scale:  float, scale, default 1.0 (common param)
+        :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
+        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+                    (common param)
+        """
+        p1 = np.array([-0.5, -0.5, -0.5])
+        p2 = np.array([0.5, 0.5, 0.5])
+        self._update_bb(p1, **kwargs)
+        self._update_bb(p2, **kwargs)
+        verts, segs = [], []
+        for i in range(8):
+            x = ((i >> 2) & 1) * 2 - 1
+            y = ((i >> 1) & 1) * 2 - 1
+            z = (i & 1) * 2 - 1
+            verts.append([x * 0.5, y * 0.5, z * 0.5])
+            if x < 0:
+                segs.append([i, i ^ 4])
+            if y < 0:
+                segs.append([i, i ^ 2])
+            if z < 0:
+                segs.append([i, i ^ 1])
+
+        self.add_lines(
+            name,
+            np.array(verts, dtype=np.float32),
+            segs=np.array(segs),
+            **kwargs,
+        )
 
     def add_sphere(self, name : str,
                    rings : Optional[int]=None, sectors : Optional[int]=None, **kwargs):
@@ -288,7 +328,7 @@ class Scene:
         self._update_bb(points, **kwargs)
 
     def add_mesh(self, name : str,
-                points : np.ndarray,
+                 points : np.ndarray,
                  faces : Optional[np.ndarray]=None,
                  face_size : Optional[int]=None,
                  **kwargs):
@@ -411,7 +451,7 @@ class Scene:
 
         if z is not None:
             self.fields[_f(name, "z")] = np.float32(z)
-        elif t is not None:
+        elif t is not None and len(t) > 1:
             t = np.array(t)
             alld = np.linalg.norm(t - t[0], axis=-1)
             mind = alld[alld > 0.0].min()
@@ -478,6 +518,33 @@ class Scene:
                         ], dtype=np.int32),
                 **kwargs)
         self._update_bb(points, **kwargs)
+
+    def remove(self, name : str):
+        """
+        Remove an object with given name
+        :param name: the name given to add_*
+        """
+        self.remove_all([name])
+
+    def remove_all(self, names : List[str]):
+        """
+        Remove object with given names
+        :param names: list of names as given to add_*
+        """
+        to_delete = []
+        for name in names:
+            prefix = name + '__'
+            for key in self.fields:
+                if key.startswith(prefix) or key == name:
+                    to_delete.append(key)
+        for key in set(to_delete):
+            del self.fields[to_delete]
+
+    def clear(self):
+        """
+        Clear all objects
+        """
+        self.fields.clear()
 
     def set_nerf(self,
                  eval_fn : Callable[..., Tuple[Any, Any]],

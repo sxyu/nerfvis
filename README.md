@@ -40,6 +40,8 @@ scene.display(port=8889)
 # (you may have to forward the port and enter localhost:8889 manually if over ssh)
 ```
 
+Use `display(open_browser=False)` to prevent opening the browser (while serving the website)
+
 You can also add meshes, points, lines (see docs).
 Note that each object e.g. cube, mesh, points, etc. must have a unique name to identify it
 right now. You may programmatically generate this. They will show up in the *layers* pane
