@@ -794,7 +794,7 @@ class Scene:
             instructions : List[str] = [],
             url : str = 'localhost',
             port : int = 8889,
-            open_browser : bool = True):
+            open_browser : bool = False):
         """
         Write to a standalone web viewer
 
@@ -907,9 +907,18 @@ class Scene:
             class LocalHandler(SimpleHTTPRequestHandler):
                 def __init__(self, *args, **kwargs):
                     super().__init__(*args, directory=dirname, **kwargs)
-            server = HTTPServer(('', port), LocalHandler)
 
-            print(f'Serving {url}:{port}')
+            server = None
+            for port_i in range(port, port + 25):
+                try:
+                    server = HTTPServer(('', port_i), LocalHandler)
+                    print(f'Serving {url}:{port_i}')
+                    break
+                except OSError:
+                    server = None
+                    pass
+            assert server is not None, f"Could not find open port near {port}"
+
             if open_browser:
                 import webbrowser
                 import threading
