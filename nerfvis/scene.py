@@ -100,7 +100,7 @@ def _to_np_array(obj) -> np.ndarray:
     return np.ascontiguousarray(arr)
 
 class Scene:
-    def __init__(self, title : str = "My NeRF Visualizer"):
+    def __init__(self, title : str = "Scene"):
         """
         Scene for NeRF visualization. Add objects using :code:`add_*` and :code:`set_nerf` then use
         :code:`export()`/:code:`display()` to create a
@@ -109,7 +109,7 @@ class Scene:
         use :code:`--draw` argument of the desktop volrend program or
         via :code:`Load Local` button of the online viewer.
 
-        :param title: title to show when saving, default 'My NeRF Visualizer'.
+        :param title: title to show when saving, default 'Scene'.
                       You can change it later by setting scene.title = '...'.
         """
         self.title = title
@@ -887,7 +887,9 @@ class Scene:
         else:
             np.savez(path, **self.fields)
 
-    def export(self, dirname : Optional[str] = None,
+    def export(
+            self,
+            dirname : Optional[str] = None,
             display : bool = False,
             world_up : Optional[np.ndarray] = None,
             cam_center : Optional[np.ndarray] = None,
@@ -898,11 +900,12 @@ class Scene:
             instructions : List[str] = [],
             url : str = 'localhost',
             port : int = 8889,
-            open_browser : bool = False):
+            open_browser : bool = False,
+            serve_nonblocking : bool = False) -> Tuple[str, str]:
         """
         Write to a standalone web viewer
 
-        :param dirname: output folder path, if not given then makes a temp path
+        :param dirname: output folder path, if not given then uses nerfvis_scenes/<0-9a-zA-Z_ from self.title>
         :param display: if true, serves the output using http.server and opens the browser
         :param world_up: (3,), optionally, world up unit vector for mouse orbiting
                                (will try to infer from cameras from add_camera_frustum if not given)
@@ -921,10 +924,13 @@ class Scene:
         :param url: str, URL for server (if display=True) default localhost
         :param port: int, port for server (if display=True) default 8889
         :param open_browser: bool, if true then opens the web browser, if possible (default)
+
+        :return: dirname, if it was not provided, returns the generated folder name;
+                 url
         """
         if dirname is None:
-            import tempfile
-            dirname = osp.join(tempfile.gettempdir(), "nerfvis_temp")
+            from re import sub
+            dirname = osp.join("nerfvis_scenes", sub("[^0-9a-zA-Z_]", "", self.title))
         os.makedirs(dirname, exist_ok=True)
 
         if world_up is None and self.world_up is not None:
@@ -1008,6 +1014,7 @@ class Scene:
         with open(index_html_path, "w") as f:
             f.write(html)
 
+        final_url = ''
         if display:
             from http.server import HTTPServer, SimpleHTTPRequestHandler
             class LocalHandler(SimpleHTTPRequestHandler):
@@ -1025,21 +1032,41 @@ class Scene:
                     pass
             assert server is not None, f"Could not find open port near {port}"
 
+            import threading
+            final_url = f'{url}:{port}'
             if open_browser:
                 import webbrowser
-                import threading
                 def open_webbrowser():
-                    if not webbrowser.open_new(f'{url}:{port}'):
+                    if not webbrowser.open_new(final_url):
                         print('Could not open web browser',
                               '(note: server still launched, '
                               'please just open given port manually, using port forarding)')
                 t=threading.Thread(target=open_webbrowser)
                 t.start()
-            server.serve_forever()
+            if serve_nonblocking:
+                t_serve=threading.Thread(target=server.serve_forever)
+                t_serve.start()
+            else:
+                try:
+                    server.serve_forever()
+                except KeyboardInterrupt:
+                    print('nervfvis-server interrupted')
+        return dirname, final_url
 
-    def display(self, *args, **kwargs):
+    def display(self, *args, **kwargs) -> Tuple[str, str]:
         """
         Alias of :code:`Scene.export` with :code:`display=True` (show in webbrowser)
         """
-        self.export(*args, display=True, **kwargs)
+        return self.export(*args, display=True, **kwargs)
+
+    def embed(self,
+              width: int = 1100,
+              height: int = 800,
+              *args, **kwargs):
+        """
+        Calls :code:`Scene.export` but in addition embeds inside a notebook
+        """
+        from IPython.display import display, IFrame  # Requires IPython
+        _, url = self.export(*args, display=True, open_browser=False, **kwargs)
+        display(IFrame(url, width, height))
 
