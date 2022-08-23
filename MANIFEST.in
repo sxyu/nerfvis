@@ -1,9 +1,12 @@
 include README.md
 include LICENSE.txt
 include MANIFEST.in
+include pyproject.toml
 include setup.py
 include nerfvis/scene.py
-include nerfvis/sh.py
+include nerfvis/utils/sh.py
+include nerfvis/utils/__init__.py
+include nerfvis/utils/_rotation.pyx
 include nerfvis/__init__.py
 include nerfvis/volrend.zip
 include nerfvis/version.py
