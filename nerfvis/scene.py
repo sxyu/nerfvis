@@ -14,7 +14,7 @@ def _format_vec3(vec : np.ndarray):
     return f'[{vec[0]}, {vec[1]}, {vec[2]}]'
 
 def _scipy_rotation_from_auto(rot : np.ndarray):
-    from scipy.spatial.transform import Rotation
+    from .utils import Rotation
     if rot.shape[-1] == 3:
         q = Rotation.from_rotvec(rot)
     elif rot.shape[-1] == 4:
@@ -85,6 +85,20 @@ def _rotate_vector_np(rot : np.ndarray, pt : np.ndarray):
     else:
         raise NotImplementedError
 
+def _to_np_array(obj) -> np.ndarray:
+    if not isinstance(obj, np.ndarray):
+        if hasattr(obj, 'cpu'):
+            obj = obj.cpu()
+        if hasattr(obj, 'detach'):
+            obj = obj.detach()
+        arr = np.array(obj)
+    else:
+        arr = obj
+    if min(arr.strides) < 0:
+        # Negative stride or non-contiguous
+        arr = arr.copy()
+    return np.ascontiguousarray(arr)
+
 class Scene:
     def __init__(self, title : str = "My NeRF Visualizer"):
         """
@@ -111,23 +125,25 @@ class Scene:
     def _add_common(self, name, **kwargs):
         assert isinstance(name, str), "Name must be a string"
         if "time" in kwargs:
-            self.fields[_f(name, "time")] = np.array(kwargs["time"]).astype(np.uint32)
+            self.fields[_f(name, "time")] = _to_np_array(kwargs["time"]).astype(np.uint32)
         if "color" in kwargs:
-            self.fields[_f(name, "color")] = np.array(kwargs["color"]).astype(np.float32)
+            self.fields[_f(name, "color")] = _to_np_array(kwargs["color"]).astype(np.float32)
         if "scale" in kwargs:
             self.fields[_f(name, "scale")] = np.float32(kwargs["scale"])
         if "translation" in kwargs:
             self.fields[_f(name, "translation")] = np.array(
                     kwargs["translation"]).astype(np.float32)
         if "rotation" in kwargs:
-            self.fields[_f(name, "rotation")] = np.array(kwargs["rotation"]).astype(np.float32)
+            self.fields[_f(name, "rotation")] = _to_np_array(kwargs["rotation"]).astype(np.float32)
         if "visible" in kwargs:
             self.fields[_f(name, "visible")] = int(kwargs["visible"])
         if "unlit" in kwargs:
             self.fields[_f(name, "unlit")] = int(kwargs["unlit"])
         if "vert_color" in kwargs:
-            self.fields[_f(name, "vert_color")] = np.array(
-                    kwargs["vert_color"]).astype(np.float32)
+            vc = _to_np_array(kwargs["vert_color"])
+            if vc.dtype != np.uint8:
+                vc = (vc * 255).astype(np.uint8)
+            self.fields[_f(name, "vert_color")] = vc
 
     def _update_bb(self, points, **kwargs):
         # FIXME handle rotation
@@ -144,7 +160,7 @@ class Scene:
             max_xyz = max_xyz * scale
 
         if "translation" in kwargs:
-            transl = np.array(kwargs["translation"]).astype(np.float32)
+            transl = _to_np_array(kwargs["translation"]).astype(np.float32)
             min_xyz = min_xyz + transl
             max_xyz = max_xyz + transl
 
@@ -208,8 +224,8 @@ class Scene:
 
         self.add_lines(
             name,
-            np.array(verts, dtype=np.float32),
-            segs=np.array(segs),
+            _to_np_array(verts).astype(dtype=np.float32),
+            segs=_to_np_array(segs),
             **kwargs,
         )
 
@@ -265,8 +281,8 @@ class Scene:
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "line"
-        self.fields[_f(name, "a")] = np.array(a).astype(np.float32)
-        self.fields[_f(name, "b")] = np.array(b).astype(np.float32)
+        self.fields[_f(name, "a")] = _to_np_array(a).astype(np.float32)
+        self.fields[_f(name, "b")] = _to_np_array(b).astype(np.float32)
         self._update_bb(a, **kwargs)
         self._update_bb(b, **kwargs)
 
@@ -294,12 +310,13 @@ class Scene:
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "lines"
-        self.fields[_f(name, "points")] = np.array(points).astype(np.float32)
+        self.fields[_f(name, "points")] = _to_np_array(points).astype(np.float32)
         if segs is not None:
-            self.fields[_f(name, "segs")] = np.array(segs).astype(np.int32)
+            self.fields[_f(name, "segs")] = _to_np_array(segs).astype(np.int32)
         self._update_bb(points, **kwargs)
 
-    def add_points(self, name : str,
+    def add_points(self,
+                   name : str,
                    points : np.ndarray,
                    point_size : float = 1.0,
                    **kwargs):
@@ -309,7 +326,7 @@ class Scene:
         :param name: an identifier for this object
         :param points: (N, 3) float, list of points
         :param point_size: float, point size
-        :param color: (3,) color, default is orange (common param)
+        :param color: (3,) color, default is orange (common param, can be 3 item list)
         :param vert_color: (N, 3) vertex color, optional (overrides color) (common param)
         :param translation: (3,), model translation (common param)
         :param rotation: (3,), model rotation in axis-angle (common param)
@@ -320,9 +337,11 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; 0=always display (default)
                     (common param)
         """
+        if 'unlit' not in kwargs:
+            kwargs['unlit'] = True   # Default unlit points
         self._add_common(name, **kwargs)
         self.fields[name] = "points"
-        self.fields[_f(name, "points")] = np.array(points).astype(np.float32)
+        self.fields[_f(name, "points")] = _to_np_array(points).astype(np.float32)
         if point_size != 1.0:
             self.fields[_f(name, "point_size")] = np.float32(point_size)
         self._update_bb(points, **kwargs)
@@ -354,13 +373,94 @@ class Scene:
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "mesh"
-        self.fields[_f(name, "points")] = np.array(points).astype(np.float32)
+        self.fields[_f(name, "points")] = _to_np_array(points).astype(np.float32)
         if face_size is not None:
             self.fields[_f(name, "face_size")] = int(face_size)
             assert face_size >= 1 and face_size <= 3
         if faces is not None:
-            self.fields[_f(name, "faces")] = np.array(faces).astype(np.int32)
+            self.fields[_f(name, "faces")] = _to_np_array(faces).astype(np.int32)
         self._update_bb(points, **kwargs)
+
+    def add_image(self,
+                  name : str,
+                  image : Union[str, np.ndarray],
+                  r: np.ndarray,
+                  t: np.ndarray,
+                  focal_length : float = 1111.11,
+                  z: float = 0.1,
+                  image_size : int = 64,
+                  opengl: bool = True):
+        """
+        Add an image (as plane mesh with vertex colors)
+
+        :param name: an identifier for this object
+        :param path: path to the image
+        :param r: (N, 3) or (N, 4) or (N, 3, 3) or None, optional
+                  C2W rotations for each camera, either as axis-angle,
+                  xyzw quaternion, or rotation matrix
+        :param t: (N, 3) or None, optional
+                  C2W translations for each camera applied after rotation
+        :param z: the depth at which to draw the frustum far points.
+                  use negative values for OpenGL coordinates (original NeRF)
+                  or positive values for OpenCV coordinates (NSVF).
+                  If not given, tries to infer a good value. Else defaults to -0.3
+        :param image_size: size of image for display (only if using path)
+        :param opengl: if True use OpenGL coordinates (NeRF default);
+                       else use OpenCV
+        """
+        from PIL import Image  # pip install pillow
+        if isinstance(image, str):
+            im = Image.open(str(image))
+        else:
+            image = _to_np_array(image)
+            if image.dtype != np.uint8:
+                image = (image * 255).astype(dtype=np.uint8)
+            im = Image.fromarray(image)
+        image_wh = im.size
+        focal_vis = image_size / image_wh[0] * focal_length
+        vis_h = int(image_size * image_wh[1] / image_wh[0])
+        if hasattr(Image, "Resampling"):
+            # Pillow 10
+            BOX = Image.Resampling.BOX
+        else:
+            BOX = Image.BOX
+
+        im = im.resize((image_size, vis_h), resample=BOX)
+
+        grid = np.mgrid[:image_size, :vis_h] + 0.5
+        grid[0] -= image_size * 0.5
+        grid[1] -= vis_h * 0.5
+        grid /= focal_vis
+        grid = grid.transpose(2, 1, 0)
+        grid = np.concatenate([grid, np.ones_like(grid[..., :1])], -1) * z
+        if opengl:
+            grid[..., 1:] *= -1.0
+
+        faces = np.empty(((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32)
+        arrx = np.arange((image_size - 1))
+        arry = np.arange((vis_h - 1)) * image_size
+        arr = (arry[:, None] + arrx[None]).flatten()
+        faces[:, :, 0] = arr[:, None]
+        faces[:, 0, 1] = arr + image_size
+        faces[:, 0, 2] = arr + image_size + 1
+        faces[:, 1, 1] = arr + image_size + 1
+        faces[:, 1, 2] = arr + 1
+
+        im = np.array(im)[..., :3]
+
+        r = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
+        t = _to_np_array(t).astype(np.float32)
+
+        grid_i = (r * grid.reshape(-1, 1, 3)).sum(-1) + t
+        grid_i = grid_i.astype(np.float32).copy()
+        self.add_mesh(
+            name,
+            grid_i,
+            faces=faces,
+            vert_color=im.reshape(-1, 3).astype(np.float32) / 255.0,
+            unlit=True,
+        )
+
 
     def add_camera_frustum(self, name : str,
                  focal_length : Optional[float] = None,
@@ -419,26 +519,26 @@ class Scene:
             assert t is not None, "r,t should be both set or both unset"
             if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
                 # Matrix
-                from scipy.spatial.transform import Rotation
+                from .utils import Rotation
                 r = Rotation.from_matrix(r).as_rotvec()
             elif r.ndim == 2 and r.shape[1] == 4:
                 # Quaternion
-                from scipy.spatial.transform import Rotation
+                from .utils import Rotation
                 r = Rotation.from_quat(r).as_rotvec()
-            self.fields[_f(name, "r")] = np.array(r).astype(np.float32)
+            self.fields[_f(name, "r")] = _to_np_array(r).astype(np.float32)
         if t is not None:
             assert r is not None, "r,t should be both set or both unset"
             assert r is not None
-            self.fields[_f(name, "t")] = np.array(t).astype(np.float32)
+            self.fields[_f(name, "t")] = _to_np_array(t).astype(np.float32)
 
         if update_view:
             # Infer world up direction from GT cams
-            ups = _rotate_vector_np(r, np.array([0, -1.0, 0]))
+            ups = _rotate_vector_np(r, _to_np_array([0, -1.0, 0]))
             world_up = np.mean(ups, axis=0)
             world_up /= np.linalg.norm(world_up)
 
             # Camera forward vector
-            forwards = _rotate_vector_np(r, np.array([0, 0, 1.0]))
+            forwards = _rotate_vector_np(r, _to_np_array([0, 0, 1.0]))
             cam_forward = np.mean(forwards, axis=0)
             cam_forward /= np.linalg.norm(cam_forward)
 
@@ -452,7 +552,7 @@ class Scene:
         if z is not None:
             self.fields[_f(name, "z")] = np.float32(z)
         elif t is not None and len(t) > 1:
-            t = np.array(t)
+            t = _to_np_array(t)
             alld = np.linalg.norm(t - t[0], axis=-1)
             mind = alld[alld > 0.0].min()
             self.fields[_f(name, "z")] = np.float32(mind * 0.6)
@@ -476,7 +576,7 @@ class Scene:
         mesh : trimesh.Trimesh = trimesh.load(path, force='mesh')
         if hasattr(mesh.visual, 'vertex_colors') and len(mesh.visual.vertex_colors):
             kwargs['vert_color'] = mesh.visual.vertex_colors[..., :3].astype(np.float32) / 255.0
-        verts = np.array(mesh.vertices)
+        verts = _to_np_array(mesh.vertices)
         if center:
             verts = verts - np.mean(verts, axis=0)
         self.add_mesh(osp.basename(path).replace('.', '_') + name_suffix, points=verts,
@@ -629,7 +729,7 @@ class Scene:
         if r is not None and t is not None:
             c2w = np.eye(4, dtype=np.float32)[None].repeat(r.shape[0], axis=0)
             c2w[:, :3, 3] = t
-            c2w[:, :3, :3] = _scipy_rotation_from_auto(r).as_matrix()
+            c2w[:, :3, :3] = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
             c2w = torch.from_numpy(c2w).to(device=device)
         else:
             c2w = None
@@ -638,7 +738,7 @@ class Scene:
         from tqdm import tqdm
         from svox import N3Tree
         from svox.helpers import _get_c_extension
-        from .sh import project_function_sparse, project_function
+        from .utils.sh import project_function_sparse, project_function
         project_fun = project_function_sparse if sh_proj_use_sparse else project_function
 
         _C = _get_c_extension()
@@ -771,7 +871,7 @@ class Scene:
             tree.shrink_to_fit()
             self.nerf = tree
 
-    def write(self, path : str):
+    def write(self, path : str, compress : bool = True):
         """
         Write to drawlist npz which you can open with volrend (:code:`--draw`)
         as well as in the web viewer.
@@ -782,7 +882,10 @@ class Scene:
         if not path.endswith('.draw.npz'):
             warnings.warn('The filename does not end in .draw.npz, '
                           'this will not work in web viewer')
-        np.savez_compressed(path, **self.fields)
+        if compress:
+            np.savez_compressed(path, **self.fields)
+        else:
+            np.savez(path, **self.fields)
 
     def export(self, dirname : Optional[str] = None,
             display : bool = False,
@@ -791,6 +894,7 @@ class Scene:
             cam_forward : Optional[np.ndarray] = None,
             cam_origin : Optional[np.ndarray] = None,
             tree_file : Optional[str] = None,
+            compress: bool = True,
             instructions : List[str] = [],
             url : str = 'localhost',
             port : int = 8889,
@@ -812,6 +916,7 @@ class Scene:
                           visualize a NeRF directly with set_nerf, in which case the generated
                           file from that is used. You have to put this in the output folder
                           yourself afterwards
+        :param compress: whether to compress the output npz file (slower but smaller)
         :param instructions: list of additional javascript instructions to execute (advanced)
         :param url: str, URL for server (if display=True) default localhost
         :param port: int, port for server (if display=True) default 8889
@@ -868,6 +973,7 @@ class Scene:
         if cam_center is not None:
             all_instructions.append('Volrend.set_cam_center(' + _format_vec3(cam_center) + ')')
         if cam_forward is not None:
+            cam_forward = _to_np_array(cam_forward)
             all_instructions.append('Volrend.set_cam_back(' + _format_vec3(-cam_forward) + ')')
         if cam_origin is not None:
             all_instructions.append('Volrend.set_cam_origin(' + _format_vec3(cam_origin) + ')')
@@ -892,7 +998,7 @@ class Scene:
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(dirname)
 
-        self.write(osp.join(dirname, out_npz_fname))
+        self.write(osp.join(dirname, out_npz_fname), compress=compress)
 
         with open(index_html_path, "r") as f:
             html = f.read()
