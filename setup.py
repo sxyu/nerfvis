@@ -1,8 +1,8 @@
 import logging
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
-from Cython.Build import cythonize
 from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
+import numpy
 ext_errors = (CCompilerError, DistutilsExecError, DistutilsPlatformError, IOError, SystemExit)
 
 __version__ = None
@@ -12,8 +12,11 @@ logging.basicConfig()
 log = logging.getLogger(__file__)
 
 cython_args = {}
-cython_args["ext_modules"] = cythonize(Extension("nerfvis.utils._rotation",
-                                ["nerfvis/utils/_rotation.pyx"]))
+cython_args["ext_modules"] = [Extension(
+                                "nerfvis.utils._rotation",
+                                ["nerfvis/utils/_rotation.c"],
+                                include_dirs=[numpy.get_include()],
+                            )]
 cython_args["cmdclass"] = {'build_ext': build_ext}
 
 try:

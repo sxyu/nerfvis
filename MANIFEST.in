@@ -7,6 +7,7 @@ include nerfvis/scene.py
 include nerfvis/utils/sh.py
 include nerfvis/utils/__init__.py
 include nerfvis/utils/_rotation.pyx
+include nerfvis/utils/_rotation.c
 include nerfvis/__init__.py
 include nerfvis/volrend.zip
 include nerfvis/version.py
