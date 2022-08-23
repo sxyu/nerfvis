@@ -6,6 +6,10 @@ import os
 import os.path as osp
 from typing import Optional, List, Union, Callable, Tuple, Any
 import warnings
+import threading
+
+_servers = []
+_server_thds = []
 
 def _f(name : str, field : str):
     return name + '__' + field
@@ -1021,19 +1025,29 @@ class Scene:
                 def __init__(self, *args, **kwargs):
                     super().__init__(*args, directory=dirname, **kwargs)
 
+            global _server_thds
+            global _servers
+            for s in _servers:
+                s.shutdown()
+                s.server_close()
+            for thd in _server_thds:
+                thd.join()
+            _servers = []
+            _server_thds = []
+
             server = None
             for port_i in range(port, port + 25):
                 try:
                     server = HTTPServer(('', port_i), LocalHandler)
                     print(f'Serving {url}:{port_i}')
+                    port = port_i
                     break
                 except OSError:
                     server = None
                     pass
             assert server is not None, f"Could not find open port near {port}"
 
-            import threading
-            final_url = f'{url}:{port}'
+            final_url = f'http://{url}:{port}'
             if open_browser:
                 import webbrowser
                 def open_webbrowser():
@@ -1046,6 +1060,8 @@ class Scene:
             if serve_nonblocking:
                 t_serve=threading.Thread(target=server.serve_forever)
                 t_serve.start()
+                _servers.append(server)
+                _server_thds.append(t_serve)
             else:
                 try:
                     server.serve_forever()
@@ -1061,12 +1077,13 @@ class Scene:
 
     def embed(self,
               width: int = 1100,
-              height: int = 800,
+              height: int = 600,
               *args, **kwargs):
         """
         Calls :code:`Scene.export` but in addition embeds inside a notebook
         """
         from IPython.display import display, IFrame  # Requires IPython
-        _, url = self.export(*args, display=True, open_browser=False, **kwargs)
+        _, url = self.export(*args, display=True, open_browser=False,
+                serve_nonblocking=True, **kwargs)
         display(IFrame(url, width, height))
 
