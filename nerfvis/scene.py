@@ -914,7 +914,7 @@ class Scene:
         """
         Write to a standalone web viewer
 
-        :param dirname: output folder path, if not given then uses nerfvis_scenes/<0-9a-zA-Z_ from self.title>
+        :param dirname: output folder path, if not given then uses nerfvis_scenes/([0-9a-zA-Z_] from self.title)
         :param display: if true, serves the output using http.server and opens the browser
         :param world_up: (3,), optionally, world up unit vector for mouse orbiting
                                (will try to infer from cameras from add_camera_frustum if not given)
