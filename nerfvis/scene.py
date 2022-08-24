@@ -183,7 +183,7 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         self._add_common(name, **kwargs)
@@ -192,6 +192,18 @@ class Scene:
         p2 = np.array([0.5, 0.5, 0.5])
         self._update_bb(p1, **kwargs)
         self._update_bb(p2, **kwargs)
+
+    def set_world_up(self, world_up: np.ndarray):
+        """
+        Set world up vector (3D)
+        """
+        self.world_up = world_up
+
+    def set_opencv(self):
+        """
+        Use OpenCV world up ([0, -1, 0])
+        """
+        self.world_up = np.array([0.0, -1.0, 0.0])
 
     def set_title(self, title: str):
         """
@@ -212,7 +224,7 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         p1 = np.array([-0.5, -0.5, -0.5])
@@ -255,7 +267,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         self._add_common(name, **kwargs)
@@ -286,7 +298,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         self._add_common(name, **kwargs)
@@ -317,7 +329,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         self._add_common(name, **kwargs)
@@ -347,7 +359,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         if 'unlit' not in kwargs:
@@ -382,7 +394,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
         self._add_common(name, **kwargs)
@@ -517,7 +529,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit (common param)
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         :param update_view: bool, if true then updates the camera position, scene origin etc
                             using these cameras
@@ -536,11 +548,13 @@ class Scene:
         if r is not None:
             assert t is not None, "r,t should be both set or both unset"
             r = _to_np_array(r)
+            if r.ndim == 1 or (r.ndim == 2 and t.ndim == 1):
+                r = r[None]
             if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
                 # Matrix
                 from .utils import Rotation
                 r = Rotation.from_matrix(r).as_rotvec()
-            elif r.ndim == 2 and r.shape[1] == 4:
+            elif r.ndim == 2 and r.shape[1] == 4 and t:
                 # Quaternion
                 from .utils import Rotation
                 r = Rotation.from_quat(r).as_rotvec()
@@ -549,6 +563,8 @@ class Scene:
             t = _to_np_array(t)
             assert r is not None, "r,t should be both set or both unset"
             assert r is not None
+            if t.ndim == 1:
+                t = t[None]
             self.fields[_f(name, "t")] = t.astype(np.float32)
 
         if update_view and r is not None:
@@ -588,7 +604,7 @@ class Scene:
         :param path: the path to the mesh file
         :param name_suffix: object name will be basename(path) + name_suffix
         :param center: if true, centers object to mean
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
 
         Rest of keyword arguments passed to add_mesh
@@ -610,7 +626,7 @@ class Scene:
 
         :param name: identifier, default "axes"
         :param length: float, length of axes
-        :param time: int, time at which the mesh should be displayed; 0=always display (default)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
 
         Rest of keyword arguments passed to add_lines
@@ -659,7 +675,7 @@ class Scene:
                 if key.startswith(prefix) or key == name:
                     to_delete.append(key)
         for key in set(to_delete):
-            del self.fields[to_delete]
+            del self.fields[key]
 
     def clear(self):
         """
@@ -956,11 +972,10 @@ class Scene:
         os.makedirs(dirname, exist_ok=True)
 
         if world_up is None and self.world_up is not None:
-            world_up = self.world_up
+            world_up = _to_np_array(self.world_up)
         bb_available = not np.isinf(self.bb_min).any()
         if cam_origin is None:
-            if bb_available:
-                cam_origin = (self.bb_min + self.bb_max) * 0.5
+            cam_origin = np.zeros(3)
 
         if cam_forward is None:
             if self.cam_forward is not None:
@@ -972,12 +987,12 @@ class Scene:
                 cam_forward = np.array([0.7071068, 0.0, -0.7071068])
 
         if cam_center is None:
-            if cam_origin is not None:
-                if bb_available:
-                    radius = ((self.bb_max - self.bb_min) * 0.5).max()
-                    cam_center = cam_origin - cam_forward * radius * 3.0
-                elif cam_forward is not None:
-                    cam_center = cam_origin - cam_forward
+            if bb_available:
+                bbox_middle = (self.bb_max + self.bb_min) * 0.5
+                radius = ((self.bb_max - self.bb_min) * 0.7).max()
+                cam_center = bbox_middle - cam_forward * radius * 3.0
+            elif cam_forward is not None and cam_origin is not None:
+                cam_center = cam_origin - cam_forward
 
         all_instructions = []
         all_instructions.extend(instructions)
