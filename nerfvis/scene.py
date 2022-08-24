@@ -98,7 +98,7 @@ def _to_np_array(obj) -> np.ndarray:
         arr = np.array(obj)
     else:
         arr = obj
-    if min(arr.strides) < 0:
+    if len(arr.strides) > 0 and min(arr.strides) < 0:
         # Negative stride or non-contiguous
         arr = arr.copy()
     return np.ascontiguousarray(arr)
@@ -402,7 +402,7 @@ class Scene:
                   r: np.ndarray,
                   t: np.ndarray,
                   focal_length : float = 1111.11,
-                  z: float = 0.1,
+                  z: float = -0.1,
                   image_size : int = 64,
                   opengl: bool = True):
         """
@@ -419,9 +419,12 @@ class Scene:
                   use negative values for OpenGL coordinates (original NeRF)
                   or positive values for OpenCV coordinates (NSVF).
                   If not given, tries to infer a good value. Else defaults to -0.3
+                  NOTE: kind of weirdly (but to be consistent
+                       with add_camera_frustum),for OpenGL, z needs to be negative,
+                       while for OpenCV it should be positive.
         :param image_size: size of image for display (only if using path)
         :param opengl: if True use OpenGL coordinates (NeRF default);
-                       else use OpenCV
+                       else use OpenCV.
         """
         from PIL import Image  # pip install pillow
         if isinstance(image, str):
@@ -449,7 +452,7 @@ class Scene:
         grid = grid.transpose(2, 1, 0)
         grid = np.concatenate([grid, np.ones_like(grid[..., :1])], -1) * z
         if opengl:
-            grid[..., 1:] *= -1.0
+            grid[..., 1] *= -1.0
 
         faces = np.empty(((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32)
         arrx = np.arange((image_size - 1))
@@ -532,6 +535,7 @@ class Scene:
 
         if r is not None:
             assert t is not None, "r,t should be both set or both unset"
+            r = _to_np_array(r)
             if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
                 # Matrix
                 from .utils import Rotation
@@ -540,11 +544,12 @@ class Scene:
                 # Quaternion
                 from .utils import Rotation
                 r = Rotation.from_quat(r).as_rotvec()
-            self.fields[_f(name, "r")] = _to_np_array(r).astype(np.float32)
+            self.fields[_f(name, "r")] = r.astype(np.float32)
         if t is not None:
+            t = _to_np_array(t)
             assert r is not None, "r,t should be both set or both unset"
             assert r is not None
-            self.fields[_f(name, "t")] = _to_np_array(t).astype(np.float32)
+            self.fields[_f(name, "t")] = t.astype(np.float32)
 
         if update_view and r is not None:
             # Infer world up direction from GT cams
@@ -572,7 +577,8 @@ class Scene:
             mind = alld[alld > 0.0].min()
             self.fields[_f(name, "z")] = np.float32(mind * 0.6)
 
-        self._update_bb(t, **kwargs)
+        if t is not None:
+            self._update_bb(t, **kwargs)
 
 
     def add_mesh_from_file(self, path : str, name_suffix : str="", center : bool=False, **kwargs):
