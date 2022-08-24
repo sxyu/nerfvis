@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to nerfvis’s documentation! &mdash; nerfvis 0.0.16 documentation</title>
+  <title>Welcome to nerfvis’s documentation! &mdash; nerfvis 0.0.17 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -68,21 +68,28 @@
              
   <section id="welcome-to-nerfvis-s-documentation">
 <h1>Welcome to nerfvis’s documentation!<a class="headerlink" href="#welcome-to-nerfvis-s-documentation" title="Permalink to this heading"></a></h1>
-<p>This is an experimental PyTorch NeRF visualization utility based on PlenOctrees.</p>
+<p>This is a PyTorch NeRF visualization utility based on PlenOctrees, as well as a
+general web-based 3D visualization library.</p>
 <p>Install with <code class="code docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">nerfvis</span></code>. This is a pure-Python library. The base library has no dependencies except for <code class="code docutils literal notranslate"><span class="pre">numpy</span></code>.
 Adding meshes from a file requires <code class="code docutils literal notranslate"><span class="pre">trimesh</span></code>.
 Adding NeRF requires <code class="code docutils literal notranslate"><span class="pre">torch,</span> <span class="pre">svox,</span> <span class="pre">tqdm,</span> <span class="pre">scipy</span></code>.</p>
 <p>Basic usage example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">nerfvis</span>
 <span class="n">scene</span> <span class="o">=</span> <span class="n">nerfvis</span><span class="o">.</span><span class="n">Scene</span><span class="p">(</span><span class="s2">&quot;My title&quot;</span><span class="p">)</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">add_cube</span><span class="p">(</span><span class="s2">&quot;Cube1&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">translation</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_cube</span><span class="p">(</span><span class="s2">&quot;Cube/1&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">translation</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_wireframe_cube</span><span class="p">(</span><span class="s2">&quot;Cube/2&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                         <span class="n">translation</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">scale</span><span class="o">=</span><span class="mf">2.0</span><span class="p">)</span>
 <span class="n">scene</span><span class="o">.</span><span class="n">add_axes</span><span class="p">()</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">set_nerf</span><span class="p">(</span><span class="n">nerf_func</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">radius</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">use_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-<span class="n">scene</span><span class="o">.</span><span class="n">display</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="mi">8889</span><span class="p">)</span>
-<span class="c1"># Tries to open the scene in your browser</span>
-<span class="c1"># (you may have to forward the port and enter localhost:8889 manually if over ssh)</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">set_nerf</span><span class="p">(</span><span class="n">nerf_func</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="n">radius</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">use_dirs</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="c1"># Optional</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">display</span><span class="p">()</span>  <span class="c1"># Serves at localhost:8888 or first port available after that</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">export</span><span class="p">(</span><span class="s2">&quot;folder&quot;</span><span class="p">)</span> <span class="c1"># Exports sources to location</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">embed</span><span class="p">()</span> <span class="c1"># Embed in IPython notebook</span>
 </pre></div>
 </div>
+<p>Scene: holds objects. If you only use one scene, feel free to use <code class="code docutils literal notranslate"><span class="pre">from</span> <span class="pre">nerfvis</span> <span class="pre">import</span> <span class="pre">scene</span></code> instead.</p>
+<p>Names separated by <code class="code docutils literal notranslate"><span class="pre">/</span></code> will be collapsed into a tree in the layers panel in the output.</p>
+<p>Other common functions include <cite>add_camera_frustum</cite>, <cite>add_mesh</cite>, <cite>add_line</cite>, <cite>add_lines</cite>,
+<cite>add_image</cite></p>
 <p>Please see <a class="reference internal" href="nerfvis.html#nerfvis"><span class="std std-ref">Reference</span></a> for details.</p>
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>

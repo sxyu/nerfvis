@@ -193,6 +193,12 @@ class Scene:
         self._update_bb(p1, **kwargs)
         self._update_bb(p2, **kwargs)
 
+    def set_title(self, title: str):
+        """
+        Set title of output page
+        """
+        self.title = title
+
     def add_wireframe_cube(self, name : str, **kwargs):
         """
         Add a wireframe cube with side length 1 (verts {-0.5, 0.5}^3).
@@ -540,7 +546,7 @@ class Scene:
             assert r is not None
             self.fields[_f(name, "t")] = _to_np_array(t).astype(np.float32)
 
-        if update_view:
+        if update_view and r is not None:
             # Infer world up direction from GT cams
             ups = _rotate_vector_np(r, _to_np_array([0, -1.0, 0]))
             world_up = np.mean(ups, axis=0)
@@ -552,7 +558,7 @@ class Scene:
             cam_forward /= np.linalg.norm(cam_forward)
 
             # Set camera center of rotation (origin) for orbit
-            origin = np.mean(t, axis=0)
+            self.origin = np.mean(t, axis=0)
 
             # Set camera position
             self.world_up = world_up
@@ -914,7 +920,7 @@ class Scene:
         """
         Write to a standalone web viewer
 
-        :param dirname: output folder path, if not given then uses nerfvis_scenes/([0-9a-zA-Z_] from self.title)
+        :param dirname: output folder path, if not given then uses nerfvis_scenes/(0-9a-zA-Z_ from self.title)
         :param display: if true, serves the output using http.server and opens the browser
         :param world_up: (3,), optionally, world up unit vector for mouse orbiting
                                (will try to infer from cameras from add_camera_frustum if not given)
