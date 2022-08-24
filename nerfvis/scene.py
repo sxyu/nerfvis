@@ -285,8 +285,10 @@ class Scene:
         """
         self._add_common(name, **kwargs)
         self.fields[name] = "line"
-        self.fields[_f(name, "a")] = _to_np_array(a).astype(np.float32)
-        self.fields[_f(name, "b")] = _to_np_array(b).astype(np.float32)
+        a = _to_np_array(a)
+        b = _to_np_array(b)
+        self.fields[_f(name, "a")] = a.astype(np.float32)
+        self.fields[_f(name, "b")] = b.astype(np.float32)
         self._update_bb(a, **kwargs)
         self._update_bb(b, **kwargs)
 
@@ -313,8 +315,9 @@ class Scene:
                     (common param)
         """
         self._add_common(name, **kwargs)
+        points = _to_np_array(points)
         self.fields[name] = "lines"
-        self.fields[_f(name, "points")] = _to_np_array(points).astype(np.float32)
+        self.fields[_f(name, "points")] = points.astype(np.float32)
         if segs is not None:
             self.fields[_f(name, "segs")] = _to_np_array(segs).astype(np.int32)
         self._update_bb(points, **kwargs)
@@ -344,8 +347,9 @@ class Scene:
         if 'unlit' not in kwargs:
             kwargs['unlit'] = True   # Default unlit points
         self._add_common(name, **kwargs)
+        points = _to_np_array(points)
         self.fields[name] = "points"
-        self.fields[_f(name, "points")] = _to_np_array(points).astype(np.float32)
+        self.fields[_f(name, "points")] = points.astype(np.float32)
         if point_size != 1.0:
             self.fields[_f(name, "point_size")] = np.float32(point_size)
         self._update_bb(points, **kwargs)
@@ -376,8 +380,9 @@ class Scene:
                     (common param)
         """
         self._add_common(name, **kwargs)
+        points = _to_np_array(points)
         self.fields[name] = "mesh"
-        self.fields[_f(name, "points")] = _to_np_array(points).astype(np.float32)
+        self.fields[_f(name, "points")] = points.astype(np.float32)
         if face_size is not None:
             self.fields[_f(name, "face_size")] = int(face_size)
             assert face_size >= 1 and face_size <= 3
@@ -903,7 +908,7 @@ class Scene:
             compress: bool = True,
             instructions : List[str] = [],
             url : str = 'localhost',
-            port : int = 8889,
+            port : int = 8888,
             open_browser : bool = False,
             serve_nonblocking : bool = False) -> Tuple[str, str]:
         """
@@ -926,7 +931,8 @@ class Scene:
         :param compress: whether to compress the output npz file (slower but smaller)
         :param instructions: list of additional javascript instructions to execute (advanced)
         :param url: str, URL for server (if display=True) default localhost
-        :param port: int, port for server (if display=True) default 8889
+        :param port: int, port for server (if display=True) default 8888
+                        (if not available, tries next up to 32)
         :param open_browser: bool, if true then opens the web browser, if possible (default)
 
         :return: dirname, if it was not provided, returns the generated folder name;
@@ -1036,7 +1042,7 @@ class Scene:
             _server_thds = []
 
             server = None
-            for port_i in range(port, port + 25):
+            for port_i in range(port, port + 32):
                 try:
                     server = HTTPServer(('', port_i), LocalHandler)
                     print(f'Serving {url}:{port_i}')
@@ -1080,7 +1086,9 @@ class Scene:
               height: int = 600,
               *args, **kwargs):
         """
-        Calls :code:`Scene.export` but in addition embeds inside a notebook
+        Calls :code:`Scene.export` but in addition embeds inside a notebook;
+        still requires port to be forwarded if on a server. Use port=..
+        to chose one if desired (default 8888)
         """
         from IPython.display import display, IFrame  # Requires IPython
         _, url = self.export(*args, display=True, open_browser=False,
