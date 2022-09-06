@@ -7,6 +7,7 @@ import os.path as osp
 from typing import Optional, List, Union, Callable, Tuple, Any
 import warnings
 import threading
+from . import utils
 
 _servers = []
 _server_thds = []
@@ -18,13 +19,12 @@ def _format_vec3(vec : np.ndarray):
     return f'[{vec[0]}, {vec[1]}, {vec[2]}]'
 
 def _scipy_rotation_from_auto(rot : np.ndarray):
-    from .utils import Rotation
     if rot.shape[-1] == 3:
-        q = Rotation.from_rotvec(rot)
+        q = utils.Rotation.from_rotvec(rot)
     elif rot.shape[-1] == 4:
-        q = Rotation.from_quat(rot)
+        q = utils.Rotation.from_quat(rot)
     elif rot.shape[-1] == 9:
-        q = Rotation.from_matrix(rot.reshape(list(rot.shape[:-1]) + [3, 3]))
+        q = utils.Rotation.from_matrix(rot.reshape(list(rot.shape[:-1]) + [3, 3]))
     else:
         raise NotImplementedError
     return q
@@ -103,6 +103,7 @@ def _to_np_array(obj) -> np.ndarray:
         arr = arr.copy()
     return np.ascontiguousarray(arr)
 
+
 class Scene:
     def __init__(self, title : str = "Scene"):
         """
@@ -118,13 +119,13 @@ class Scene:
         """
         self.title = title
         self.fields = {}
-        self.nerf = None
 
         self.world_up = None
         self.cam_forward = None
         inf = float('inf')
         self.bb_min = np.array([inf, inf, inf])
         self.bb_max = np.array([-inf, -inf, -inf])
+        self.default_opencv = False
 
     def _add_common(self, name, **kwargs):
         assert isinstance(name, str), "Name must be a string"
@@ -171,7 +172,7 @@ class Scene:
         self.bb_min = np.minimum(min_xyz, self.bb_min)
         self.bb_max = np.maximum(max_xyz, self.bb_max)
 
-    def add_cube(self, name : str, **kwargs):
+    def add_cube(self, name : str = "cube", **kwargs):
         """
         Add a cube with side length 1 (verts {-0.5, 0.5}^3).
 
@@ -204,6 +205,7 @@ class Scene:
         Use OpenCV world up ([0, -1, 0])
         """
         self.world_up = np.array([0.0, -1.0, 0.0])
+        self.default_opencv = True
 
     def set_title(self, title: str):
         """
@@ -251,7 +253,7 @@ class Scene:
             **kwargs,
         )
 
-    def add_sphere(self, name : str,
+    def add_sphere(self, name : str = "sphere",
                    rings : Optional[int]=None, sectors : Optional[int]=None, **kwargs):
         """
         Add a UV sphere with radius 1
@@ -416,16 +418,16 @@ class Scene:
                   focal_length : float = 1111.11,
                   z: float = -0.1,
                   image_size : int = 64,
-                  opengl: bool = True):
+                  opengl: Optional[bool] = None):
         """
         Add an image (as plane mesh with vertex colors)
 
         :param name: an identifier for this object
         :param path: path to the image
-        :param r: (N, 3) or (N, 4) or (N, 3, 3) or None, optional
+        :param r: (3,) or (4,) or (3, 3) or None, optional
                   C2W rotations for each camera, either as axis-angle,
                   xyzw quaternion, or rotation matrix
-        :param t: (N, 3) or None, optional
+        :param t: (3,) or None, optional
                   C2W translations for each camera applied after rotation
         :param z: the depth at which to draw the frustum far points.
                   use negative values for OpenGL coordinates (original NeRF)
@@ -436,8 +438,11 @@ class Scene:
                        while for OpenCV it should be positive.
         :param image_size: size of image for display (only if using path)
         :param opengl: if True use OpenGL coordinates (NeRF default);
-                       else use OpenCV.
+                       else use OpenCV. Default: depends on if set_opencv()
+                       was used.
         """
+        if opengl is None:
+            opengl = not self.default_opencv
         from PIL import Image  # pip install pillow
         if isinstance(image, str):
             im = Image.open(str(image))
@@ -492,7 +497,8 @@ class Scene:
         )
 
 
-    def add_camera_frustum(self, name : str,
+    def add_camera_frustum(
+                 self, name : str,
                  focal_length : Optional[float] = None,
                  image_width : Optional[float] = None,
                  image_height : Optional[float] = None,
@@ -552,12 +558,10 @@ class Scene:
                 r = r[None]
             if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
                 # Matrix
-                from .utils import Rotation
-                r = Rotation.from_matrix(r).as_rotvec()
+                r = utils.Rotation.from_matrix(r).as_rotvec()
             elif r.ndim == 2 and r.shape[1] == 4 and t:
                 # Quaternion
-                from .utils import Rotation
-                r = Rotation.from_quat(r).as_rotvec()
+                r = utils.Rotation.from_quat(r).as_rotvec()
             self.fields[_f(name, "r")] = r.astype(np.float32)
         if t is not None:
             t = _to_np_array(t)
@@ -683,7 +687,82 @@ class Scene:
         """
         self.fields.clear()
 
-    def set_nerf(self,
+    def add_volume(self,
+                   name: str,
+                   density : np.ndarray,
+                   colors : np.ndarray,
+                   radius: float = 1.0,
+                   density_threshold: float = 1.0,
+                   **kwargs
+               ):
+        """
+        Add a 3D volume using the PlenOctree renderer
+
+        :param name: an identifier for this object
+        :param density: (Dx, Dy, Dz); dimensions need not be powers
+                                      of 2 nor equal
+        :param colors: (Dx, Dy, Dz, (3, channel_size));
+                                      color data,
+                                      last dim is size 3 * channel_size
+        :param radius: 1/2 side length of volume
+        :param density_threshold: threshold below which
+                                  density is ignored
+        :param data_format: standard PlenOctree data format string,
+                            one of :code:`RGBA | SH1 | SH4 | SH9 | SH16`.
+                            The channel_size should be respectively
+                            :code:`1 | 1 | 4 | 9 | 16```.
+        :param translation: (3,), model translation (common param)
+        :param rotation: (3,), model rotation in axis-angle (common param)
+        :param scale:  float, scale, default 1.0 (common param)
+        :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
+                    (common param)
+        """
+        density = _to_np_array(density)
+        colors = _to_np_array(colors)
+        tree_data = utils.vol2plenoctree(
+                density, colors, radius, density_threshold=density_threshold)
+        self._add_common(name, **kwargs)
+        self.fields[name] = "volume"
+        for k in tree_data:
+            self.fields[_f(name, k)] = tree_data[k]
+        self._update_bb(np.array([-radius, -radius, -radius]), **kwargs)
+        self._update_bb(np.array([radius, radius, radius]), **kwargs)
+
+    def add_volume_from_npz(self, name: str, file: str, **kwargs):
+        """
+        Add a volume already saved as npz
+        (for example, PlenOctree checkpoints downloaded from the website)
+
+        :param name: an identifier for this object
+        :param file: path to npz file
+        :param translation: (3,), model translation (common param)
+        :param rotation: (3,), model rotation in axis-angle (common param)
+        :param scale:  float, scale, default 1.0 (common param)
+        :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
+                    (common param)
+        """
+        tree_data = dict(np.load(file))
+        self._add_common(name, **kwargs)
+        self.fields[name] = "volume"
+        for k in tree_data:
+            self.fields[_f(name, k)] = tree_data[k]
+        radius = 0.5 / tree_data.get('invradius3', tree_data.get('invradius', None))
+        if isinstance(radius, float):
+            radius = np.array([radius] * 3, dtype=np.float32)
+        self._update_bb(-radius, **kwargs)
+        self._update_bb(radius, **kwargs)
+
+    def set_nerf(self, *args, **kwargs):
+        """
+        Deprecated, please use add_nerf
+        """
+        warnings.warn("set_nerf is deprecated, please use add_nerf")
+        self.add_nerf("nerf", *args, **kwargs)
+
+    def add_nerf(self,
+                 name: str,
                  eval_fn : Callable[..., Tuple[Any, Any]],
                  center: Union[Tuple[float, float, float], List[float], float, np.ndarray, None]
                         = None,
@@ -704,7 +783,8 @@ class Scene:
                  image_height : Optional[float] = None,
                  sigma_multiplier : float = 1.0,
                  chunk : int=720720,
-                 device : str = "cuda:0"):
+                 device : str = "cuda:0",
+                 **kwargs):
         """
         Discretize and display a NeRF (low quality, for visualization purposes only).
         Currently only supports PyTorch NeRFs.
@@ -747,6 +827,14 @@ class Scene:
         :param focal_length: float or Tuple (fx, fy), optional, focal length for weight thresholding
         :param image_width: float, optional, image width for weight thresholding
         :param image_height: float, optional, image height for weight thresholding
+        :param translation: (3,), model translation (common param)
+        :param rotation: (3,), model rotation in axis-angle (common param)
+        :param nerf_scale:  float, scale, default 1.0;
+                            note this has a different name due to legacy
+                            conflict (common param)
+        :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
+                    (common param)
         """
         import torch
         if center is None and not np.isinf(self.bb_min).any():
@@ -906,7 +994,21 @@ class Scene:
             print(" Finishing up")
 
             tree.shrink_to_fit()
-            self.nerf = tree
+            tree_data = {
+                "data_dim" : tree.data_dim,
+                "data_format" : repr(tree.data_format),
+                "child" : tree.child.cpu(),
+                "invradius3" : tree.invradius.cpu(),
+                "offset" : tree.offset.cpu(),
+                "data": tree.data.data.half().cpu().numpy()
+            }
+            if 'nerf_scale' in kwargs:
+                kwargs['scale'] = kwargs['nerf_scale']
+            self._add_common(name, **kwargs)
+            self.fields[name] = "volume"
+            for k in tree_data:
+                self.fields[_f(name, k)] = tree_data[k]
+
 
     def write(self, path : str, compress : bool = True):
         """
@@ -932,7 +1034,6 @@ class Scene:
             cam_center : Optional[np.ndarray] = None,
             cam_forward : Optional[np.ndarray] = None,
             cam_origin : Optional[np.ndarray] = None,
-            tree_file : Optional[str] = None,
             compress: bool = True,
             instructions : List[str] = [],
             url : str = 'localhost',
@@ -952,10 +1053,6 @@ class Scene:
                                (will try to infer from cameras from add_camera_frustum if not given)
         :param cam_origin: (3,), optionally, camera center of rotation point
                                (will try to infer from cameras from add_camera_frustum if not given)
-        :param tree_file: optionally, PlenOctree model file to load; only used if you didn't
-                          visualize a NeRF directly with set_nerf, in which case the generated
-                          file from that is used. You have to put this in the output folder
-                          yourself afterwards
         :param compress: whether to compress the output npz file (slower but smaller)
         :param instructions: list of additional javascript instructions to execute (advanced)
         :param url: str, URL for server (if display=True) default localhost
@@ -971,7 +1068,9 @@ class Scene:
             dirname = osp.join("nerfvis_scenes", sub("[^0-9a-zA-Z_]", "", self.title))
         os.makedirs(dirname, exist_ok=True)
 
-        if world_up is None and self.world_up is not None:
+        if world_up is not None:
+            world_up = _to_np_array(world_up)
+        elif self.world_up is not None:
             world_up = _to_np_array(self.world_up)
         bb_available = not np.isinf(self.bb_min).any()
         if cam_origin is None:
@@ -1006,13 +1105,8 @@ class Scene:
         out_npz_fname = f"volrend.draw.npz"
         all_instructions.append(f'Volrend.set_title("{self.title}")')
         all_instructions.append(f'load_remote("{out_npz_fname}")')
-        if self.nerf is not None:
-            tree_file = "nerf.npz"
-            self.nerf.save(osp.join(dirname, tree_file), compress=True)  # Faster saving
-        if tree_file is not None:
-            all_instructions.append(f'load_remote("{tree_file}")')
         if world_up is not None:
-            all_instructions.append(f'Volrend.set_world_up(' + _format_vec3(world_up) + ')')
+            all_instructions.append('Volrend.set_world_up(' + _format_vec3(world_up) + ')')
         if cam_center is not None:
             all_instructions.append('Volrend.set_cam_center(' + _format_vec3(cam_center) + ')')
         if cam_forward is not None:
@@ -1020,7 +1114,7 @@ class Scene:
             all_instructions.append('Volrend.set_cam_back(' + _format_vec3(-cam_forward) + ')')
         if cam_origin is not None:
             all_instructions.append('Volrend.set_cam_origin(' + _format_vec3(cam_origin) + ')')
-        MONKEY_PATCH = \
+        JS_INJECT = \
 """
     <script>
         Volrend.onRuntimeInitialized = function() {
@@ -1047,7 +1141,7 @@ class Scene:
             html = f.read()
         spl = html.split("</body>")
         assert len(spl) == 2, "Malformed html"
-        html = spl[0] + MONKEY_PATCH + "</body>" + spl[1]
+        html = spl[0] + JS_INJECT + "</body>" + spl[1]
         with open(index_html_path, "w") as f:
             f.write(html)
 
