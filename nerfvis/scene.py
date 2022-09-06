@@ -1012,9 +1012,13 @@ class Scene:
 
     def write(self, path : str, compress : bool = True):
         """
-        Write to drawlist npz which you can open with volrend (:code:`--draw`)
-        as well as in the web viewer.
-        Discretized NeRF will not be exported. Usually, it's easier to use Scene.export()
+        Write to drawlist npz which you can open with volrend
+        (:code:`volrend --draw <output.npz>`;
+         nerfvis_base branch recommended for more up-to-date experience)
+        as well as in the web viewer. Usually, it's easier to use one of
+        :code:`Scene.export()`,
+        :code:`Scene.display()`, or
+        :code:`Scene.emebd()`
 
         :param path: output npz path
         """
