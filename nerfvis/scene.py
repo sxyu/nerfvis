@@ -107,12 +107,15 @@ def _to_np_array(obj) -> np.ndarray:
 class Scene:
     def __init__(self, title : str = "Scene"):
         """
-        Scene for NeRF visualization. Add objects using :code:`add_*` and :code:`set_nerf` then use
-        :code:`export()`/:code:`display()` to create a
-        standalone web viewer you can open in a browser.
-        Alternatively,
-        use :code:`--draw` argument of the desktop volrend program or
-        via :code:`Load Local` button of the online viewer.
+        Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
+        Add objects using :code:`add_*` as seen below, then use
+        :code:`export()`/:code:`display()`/:code:`embed()` to create a
+        standalone web viewer you can open in a browser or embed in
+        a notebook.
+
+        - Single scene quick import:  `from nerfvis import scene`
+
+        - Multiple scenes:  `from nerfvis import Scene` then `scene = Scene('title')`
 
         :param title: title to show when saving, default 'Scene'.
                       You can change it later by setting scene.title = '...'.
