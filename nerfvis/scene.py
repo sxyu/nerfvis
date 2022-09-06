@@ -662,7 +662,11 @@ class Scene:
 
     def remove(self, name : str):
         """
-        Remove an object with given name
+        Remove an object with given name.
+        Note: if you overwrite an object with the same name
+        type and arguments, it will overwrite the
+        object in the scene.
+
         :param name: the name given to add_*
         """
         self.remove_all([name])
@@ -670,6 +674,7 @@ class Scene:
     def remove_all(self, names : List[str]):
         """
         Remove object with given names
+
         :param names: list of names as given to add_*
         """
         to_delete = []
@@ -683,7 +688,7 @@ class Scene:
 
     def clear(self):
         """
-        Clear all objects
+        Clear all objects from the scene.
         """
         self.fields.clear()
 
