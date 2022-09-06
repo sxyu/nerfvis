@@ -434,8 +434,8 @@ class Scene:
                   or positive values for OpenCV coordinates (NSVF).
                   If not given, tries to infer a good value. Else defaults to -0.3
                   NOTE: kind of weirdly (but to be consistent
-                       with add_camera_frustum),for OpenGL, z needs to be negative,
-                       while for OpenCV it should be positive.
+                  with add_camera_frustum),for OpenGL, z needs to be negative,
+                  while for OpenCV it should be positive.
         :param image_size: size of image for display (only if using path)
         :param opengl: if True use OpenGL coordinates (NeRF default);
                        else use OpenCV. Default: depends on if set_opencv()
@@ -1043,8 +1043,8 @@ class Scene:
         """
         Write to a standalone web viewer
 
-        :param dirname: output folder path, if not given then uses nerfvis_scenes/(0-9a-zA-Z_ from self.title)
-        :param display: if true, serves the output using http.server and opens the browser
+        :param dirname: output folder path, if not given then uses :code:`./nerfvis_scenes/(0-9a-zA-Z_ from self.title)`
+        :param display: if true, serves the output using http.server (default false)
         :param world_up: (3,), optionally, world up unit vector for mouse orbiting
                                (will try to infer from cameras from add_camera_frustum if not given)
         :param cam_center: (3,), optionally, camera center point
@@ -1058,7 +1058,7 @@ class Scene:
         :param url: str, URL for server (if display=True) default localhost
         :param port: int, port for server (if display=True) default 8888
                         (if not available, tries next up to 32)
-        :param open_browser: bool, if true then opens the web browser, if possible (default)
+        :param open_browser: bool, if true then opens the web browser, if possible (default False)
 
         :return: dirname, if it was not provided, returns the generated folder name;
                  url
@@ -1198,7 +1198,26 @@ class Scene:
 
     def display(self, *args, **kwargs) -> Tuple[str, str]:
         """
-        Alias of :code:`Scene.export` with :code:`display=True` (show in webbrowser)
+        Alias of :code:`Scene.export` with :code:`display=True` (serve using http.server)
+
+        :param dirname: output folder path, if not given then uses :code:`./nerfvis_scenes/(0-9a-zA-Z_ from self.title)`
+        :param world_up: (3,), optionally, world up unit vector for mouse orbiting
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param cam_center: (3,), optionally, camera center point
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param cam_forward: (3,), optionally, camera forward-pointing vector
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param cam_origin: (3,), optionally, camera center of rotation point
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param compress: whether to compress the output npz file (slower but smaller)
+        :param instructions: list of additional javascript instructions to execute (advanced)
+        :param url: str, URL for server (if display=True) default localhost
+        :param port: int, port for server (if display=True) default 8888
+                        (if not available, tries next up to 32)
+        :param open_browser: bool, if true then opens the web browser, if possible (default False)
+
+        :return: dirname, if it was not provided, returns the generated folder name;
+                 url
         """
         return self.export(*args, display=True, **kwargs)
 
@@ -1210,6 +1229,25 @@ class Scene:
         Calls :code:`Scene.export` but in addition embeds inside a notebook;
         still requires port to be forwarded if on a server. Use port=..
         to chose one if desired (default 8888)
+
+        :param dirname: output folder path, if not given then uses :code:`./nerfvis_scenes/(0-9a-zA-Z_ from self.title)`
+        :param world_up: (3,), optionally, world up unit vector for mouse orbiting
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param cam_center: (3,), optionally, camera center point
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param cam_forward: (3,), optionally, camera forward-pointing vector
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param cam_origin: (3,), optionally, camera center of rotation point
+                               (will try to infer from cameras from add_camera_frustum if not given)
+        :param compress: whether to compress the output npz file (slower but smaller)
+        :param instructions: list of additional javascript instructions to execute (advanced)
+        :param url: str, URL for server (if display=True) default localhost
+        :param port: int, port for server (if display=True) default 8888
+                        (if not available, tries next up to 32)
+        :param open_browser: bool, if true then opens the web browser, if possible (default False)
+
+        :return: dirname, if it was not provided, returns the generated folder name;
+                 url
         """
         from IPython.display import display, IFrame  # Requires IPython
         _, url = self.export(*args, display=True, open_browser=False,
