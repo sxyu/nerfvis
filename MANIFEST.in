@@ -9,5 +9,5 @@ include nerfvis/utils/__init__.py
 include nerfvis/utils/_rotation.pyx
 include nerfvis/utils/_rotation.c
 include nerfvis/__init__.py
-include nerfvis/volrend.zip
+include nerfvis/index.html
 include nerfvis/version.py

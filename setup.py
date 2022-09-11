@@ -29,7 +29,7 @@ try:
         long_description='NeRF visualization library based on PlenOctrees. See https://github.com/sxyu/nerfvis',
         packages=['nerfvis'],
         include_package_data=True,
-        package_data={'nerfvis': ['volrend.zip']},
+        package_data={'nerfvis': ['index.html']},
         **cython_args,
     )
 except ext_errors as ex:
@@ -44,6 +44,6 @@ except ext_errors as ex:
         long_description='NeRF visualization library based on PlenOctrees. See https://github.com/sxyu/nerfvis',
         packages=['nerfvis'],
         include_package_data=True,
-        package_data={'nerfvis': ['volrend.zip']},
+        package_data={'nerfvis': ['index.html']},
         cmdclass = {}
     )

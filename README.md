@@ -165,7 +165,7 @@ To add cameras (also used for scaling scene, initializing camera etc), use
 
 ## Source of pre-compiled binaries
 
-This project contains a zipfile containing wasm, which comes from  `volrend`, the branch `nerfvis_base`, compiled using Emscripten as per the instructions in that repo.
+This project contains a index.html containing inlined wasm, which comes from  `volrend`, the branch `nerfvis_base`, compiled using Emscripten as per the instructions in that repo.
 
 https://github.com/sxyu/volrend/tree/nerfvis_base
 

@@ -2,6 +2,7 @@
 NeRF + Drawing
 """
 import numpy as np
+import shutil
 import os
 import os.path as osp
 from typing import Optional, List, Union, Callable, Tuple, Any
@@ -1120,7 +1121,7 @@ class Scene:
                 "Volrend.set_options(opt)"])
         out_npz_fname = f"volrend.draw.npz"
         all_instructions.append(f'Volrend.set_title("{self.title}")')
-        all_instructions.append(f'load_remote("{out_npz_fname}")')
+        all_instructions.append(f'Volrend.load_remote("{out_npz_fname}")')
         if world_up is not None:
             all_instructions.append('Volrend.set_world_up(' + _format_vec3(world_up) + ')')
         if cam_center is not None:
@@ -1132,25 +1133,19 @@ class Scene:
             all_instructions.append('Volrend.set_cam_origin(' + _format_vec3(cam_origin) + ')')
         JS_INJECT = \
 """
-    <script>
-        Volrend.onRuntimeInitialized = function() {
-            $(document).ready(function() {
-                onInit();
-                {{instructions}};
-            });
-        }
-    </script>
+<script>
+window.addEventListener("volrend_ready", function() {
+    console.log('done');
+    {{instructions}};
+});
+</script>
 """.replace("{{instructions}}", ";\n".join(all_instructions))
-        dir_path = osp.dirname(osp.realpath(__file__))
-        zip_path = osp.join(dir_path, "volrend.zip")
+        index_html_src_path = osp.join(osp.dirname(osp.realpath(__file__)), "index.html")
         index_html_path = osp.join(dirname, "index.html")
         if osp.isfile(index_html_path):
             os.unlink(index_html_path)
 
-        import zipfile
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(dirname)
-
+        shutil.copyfile(index_html_src_path, index_html_path)
         self.write(osp.join(dirname, out_npz_fname), compress=compress)
 
         with open(index_html_path, "r") as f:
