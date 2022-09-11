@@ -15,7 +15,7 @@ Install with:
 >>> scene.display(port=8888)
 ```
 
-Inside a Jupyter notebook, you can try using `scene.embed()` instead. This will currently embed an IFrame into the notebook. The text available port >=8888 will be used in this case.
+Inside a Jupyter notebook, you can try using `scene.embed()` instead.
 
 
 For example of use with data visualization (not NeRF):

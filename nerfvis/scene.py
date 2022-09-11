@@ -2,10 +2,10 @@
 NeRF + Drawing
 """
 import numpy as np
-import shutil
 import os
 import os.path as osp
-from typing import Optional, List, Union, Callable, Tuple, Any
+import base64
+from typing import Optional, List, Union, Callable, Tuple, Any, Dict
 import warnings
 import threading
 from . import utils
@@ -122,7 +122,7 @@ class Scene:
                       You can change it later by setting scene.title = '...'.
         """
         self.title = title
-        self.fields = {}
+        self.fields : Dict["str", Any] = {}
 
         self.world_up = None
         self.cam_forward = None
@@ -399,7 +399,7 @@ class Scene:
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
         :param unlit: bool, whether mesh should be rendered unlit.
-                            Use this if you want to render vertex colors directly 
+                            Use this if you want to render vertex colors directly
                             without lighting. Default false. (common param)
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
@@ -1038,10 +1038,15 @@ class Scene:
         if not path.endswith('.draw.npz'):
             warnings.warn('The filename does not end in .draw.npz, '
                           'this will not work in web viewer')
-        if compress:
-            np.savez_compressed(path, **self.fields)
+        if self.fields:
+            fields = self.fields
         else:
-            np.savez(path, **self.fields)
+            # Make sure it is nonempty
+            fields = {"0" : 0}
+        if compress:
+            np.savez_compressed(path, **fields)
+        else:
+            np.savez(path, **fields)
 
     def export(
             self,
@@ -1056,6 +1061,8 @@ class Scene:
             url : str = 'localhost',
             port : int = 8888,
             open_browser : bool = False,
+            output_html_name : str = 'index.html',
+            embed_output : bool = False,
             serve_nonblocking : bool = False) -> Tuple[str, str]:
         """
         Write to a standalone web viewer
@@ -1076,6 +1083,12 @@ class Scene:
         :param port: int, port for server (if display=True) default 8888
                         (if not available, tries next up to 32)
         :param open_browser: bool, if true then opens the web browser, if possible (default False)
+        :param embed_output: bool, if true, embeds the output in the html as self-loading
+                                    base64/blob url instead of saving as NPZ.
+                                    This may cause the page to load very slowly initially,
+                                    but combines all data into a single html file.
+        :param serve_nonblocking: bool, if true, and display=True, open a server in another
+                                  threading and continues execution
 
         :return: dirname, if it was not provided, returns the generated folder name;
                  url
@@ -1121,7 +1134,6 @@ class Scene:
                 "Volrend.set_options(opt)"])
         out_npz_fname = f"volrend.draw.npz"
         all_instructions.append(f'Volrend.set_title("{self.title}")')
-        all_instructions.append(f'Volrend.load_remote("{out_npz_fname}")')
         if world_up is not None:
             all_instructions.append('Volrend.set_world_up(' + _format_vec3(world_up) + ')')
         if cam_center is not None:
@@ -1131,27 +1143,40 @@ class Scene:
             all_instructions.append('Volrend.set_cam_back(' + _format_vec3(-cam_forward) + ')')
         if cam_origin is not None:
             all_instructions.append('Volrend.set_cam_origin(' + _format_vec3(cam_origin) + ')')
+        index_html_src_path = osp.join(osp.dirname(osp.realpath(__file__)), "index.html")
+        index_html_path = osp.join(dirname, output_html_name)
+        if osp.isfile(index_html_path):
+            os.unlink(index_html_path)
+
+        out_npz_path = osp.join(dirname, out_npz_fname)
+        self.write(out_npz_path, compress=compress)
+
+        if embed_output:
+            # Embed the output as a blob URL
+            with open(out_npz_path, 'rb') as f:
+                npz_bytes = f.read()
+                base64_npz = base64.b64encode(npz_bytes).decode('utf-8')
+                all_instructions.append('let blob_url = await fetch("data: \'application/octet-stream\';base64,' + base64_npz + '").then(res => res.blob()).then(URL.createObjectURL);')
+                all_instructions.append('Volrend.load_remote(blob_url)')
+            os.unlink(out_npz_path)
+        else:
+            all_instructions.append(f'Volrend.load_remote("{out_npz_fname}")')
+
+        # Inject JS into HTML at </body>
+        with open(index_html_src_path, "r") as f:
+            html = f.read()
+        spl = html.split("</body>")
+        assert len(spl) == 2, "Malformed html"
+
         JS_INJECT = \
 """
 <script>
-window.addEventListener("volrend_ready", function() {
-    console.log('done');
+window.addEventListener("volrend_ready", async function() {
     {{instructions}};
 });
 </script>
 """.replace("{{instructions}}", ";\n".join(all_instructions))
-        index_html_src_path = osp.join(osp.dirname(osp.realpath(__file__)), "index.html")
-        index_html_path = osp.join(dirname, "index.html")
-        if osp.isfile(index_html_path):
-            os.unlink(index_html_path)
 
-        shutil.copyfile(index_html_src_path, index_html_path)
-        self.write(osp.join(dirname, out_npz_fname), compress=compress)
-
-        with open(index_html_path, "r") as f:
-            html = f.read()
-        spl = html.split("</body>")
-        assert len(spl) == 2, "Malformed html"
         html = spl[0] + JS_INJECT + "</body>" + spl[1]
         with open(index_html_path, "w") as f:
             f.write(html)
@@ -1237,9 +1262,13 @@ window.addEventListener("volrend_ready", function() {
               height: int = 600,
               *args, **kwargs):
         """
-        Calls :code:`Scene.export` but in addition embeds inside a notebook;
-        still requires port to be forwarded if on a server. Use port=..
-        to chose one if desired (default 8888)
+        Calls :code:`Scene.export` but in addition embeds inside a notebook. 
+
+        NOTE 1: if the notebook is opened from a different notebook root folder
+        in the future it will not work.
+
+        NOTE 2: still writes files to ./nerfvis_scenes folder, and it may get large
+        overtime. You may want to clean it up manually.
 
         :param dirname: output folder path, if not given then uses :code:`./nerfvis_scenes/(0-9a-zA-Z_ from self.title)`
         :param world_up: (3,), optionally, world up unit vector for mouse orbiting
@@ -1261,7 +1290,14 @@ window.addEventListener("volrend_ready", function() {
                  url
         """
         from IPython.display import display, IFrame  # Requires IPython
-        _, url = self.export(*args, display=True, open_browser=False,
-                serve_nonblocking=True, **kwargs)
-        display(IFrame(url, width, height))
+        import random, string
+        randstr = ''.join(
+                random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        embed_name = "ipython_embed_" + randstr + ".html"
+        dirname, _ = self.export(*args, display=False, open_browser=False,
+                serve_nonblocking=False, embed_output=True,
+                                 output_html_name=embed_name,
+                                 **kwargs)
+        html_file = os.path.join(dirname, embed_name)
+        display(IFrame(os.path.relpath(html_file), width, height))
 
