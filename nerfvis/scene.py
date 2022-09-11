@@ -228,7 +228,7 @@ class Scene:
         :param rotation: (3,), model rotation in axis-angle (common param)
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)
-        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param unlit: bool, whether mesh should be rendered unlit. Default True (common param)
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
@@ -302,7 +302,7 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
-        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param unlit: bool, whether mesh should be rendered unlit. Default true (common param)
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
@@ -333,7 +333,7 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
-        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param unlit: bool, whether mesh should be rendered unlit. Default true (common param)
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
@@ -363,12 +363,10 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
-        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param unlit: bool, whether mesh should be rendered unlit. Default true (common param)
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
-        if 'unlit' not in kwargs:
-            kwargs['unlit'] = True   # Default unlit points
         self._add_common(name, **kwargs)
         points = _to_np_array(points)
         self.fields[name] = "points"
@@ -388,9 +386,10 @@ class Scene:
         :param name: an identifier for this object
         :param points: (N, 3) float, list of points
         :param faces: (N, face_size) int, list of faces; if not given,
-                faces will be something like 1-2-3, 4-5-6, 7-8-9, etc
+                faces will be :code:`0-1-2, 3-4-5, 6-7-8`, etc (glDrawArrays)
         :param face_size: int, one of 1,2,3. 3 means triangle mesh,
-                1 means point cloud, and 2 means lines
+                1 means point cloud, and 2 means lines. By default is determined from faces
+                (usually 3).
         :param color: (3,) color, default is orange (common param)
         :param vert_color: (N, 3) vertex color, optional (overrides color) (common param)
         :param translation: (3,), model translation (common param)
@@ -398,7 +397,9 @@ class Scene:
         :param scale:  float, scale, default 1.0 (common param)
         :param visible: bool, whether mesh should be visible on init, default true
                         (depends on GET parameter in web version) (common param)
-        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param unlit: bool, whether mesh should be rendered unlit.
+                            Use this if you want to render vertex colors directly 
+                            without lighting. Default false. (common param)
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
@@ -701,6 +702,7 @@ class Scene:
                    colors : np.ndarray,
                    radius: float = 1.0,
                    density_threshold: float = 1.0,
+                   data_format: str = "RGBA",
                    **kwargs
                ):
         """
@@ -729,7 +731,9 @@ class Scene:
         density = _to_np_array(density)
         colors = _to_np_array(colors)
         tree_data = utils.vol2plenoctree(
-                density, colors, radius, density_threshold=density_threshold)
+                density, colors, radius,
+                density_threshold=density_threshold,
+                data_format=data_format)
         self._add_common(name, **kwargs)
         self.fields[name] = "volume"
         for k in tree_data:

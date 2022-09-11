@@ -7,6 +7,41 @@ try:
 except:
     from scipy.spatial.transform import Rotation # If cython not available, requires scipy
 
+def _expand_bits(v):
+    v = (v | (v << 16)) & 0x030000FF;
+    v = (v | (v << 8)) & 0x0300F00F;
+    v = (v | (v << 4)) & 0x030C30C3;
+    v = (v | (v << 2)) & 0x09249249;
+    return v;
+
+def _unexpand_bits(v):
+    v &= 0x49249249;
+    v = (v | (v >> 2)) & 0xc30c30c3;
+    v = (v | (v >> 4)) & 0xf00f00f;
+    v = (v | (v >> 8)) & 0xff0000ff;
+    v = (v | (v >> 16)) & 0x0000ffff;
+    return v;
+
+def morton(x, y, z):
+    xx = _expand_bits(x);
+    yy = _expand_bits(y);
+    zz = _expand_bits(z);
+    return (xx << 2) + (yy << 1) + zz;
+
+def inv_morton(code):
+    x = _unexpand_bits(code >> 2);
+    y = _unexpand_bits(code >> 1);
+    z = _unexpand_bits(code);
+    return x, y, z
+
+def morton_grid(pow2) -> np.ndarray:
+    mg = np.mgrid[:pow2, :pow2, :pow2].reshape(3, -1)
+    return morton(*mg)
+
+def inv_morton_grid(pow2 : int) -> np.ndarray:
+    mg = np.arange(pow2 ** 3)
+    x, y, z = inv_morton(mg)
+    return (x * pow2 + y) * pow2 + z
 
 def vol2plenoctree(
             density : np.ndarray,
@@ -95,6 +130,8 @@ def vol2plenoctree(
     # PlenOctree standard format data arrays
     all_child = []
     all_data = []
+    mg, img = morton_grid(1), inv_morton_grid(1)
+    curr_indices = np.zeros(1, dtype=np.uint32)
     for i, (mask, next_mask) in enumerate(zip(hierarchy[:-1], hierarchy[1:])):
         nnodes = mask.sum()
         pow2 = mask.shape[0]
@@ -103,42 +140,48 @@ def vol2plenoctree(
             # Construct the last tree level
             child = np.zeros((nnodes, 2, 2, 2), dtype=np.uint32);
             if require_pad:
-                # Data is not power of 2, pad it (conceptually)
-                voxel_indices = np.zeros(next_mask.shape, dtype=np.uint32)
-                voxel_indices[:dims[0], :dims[1], :dims[2]] = np.arange(
-                        dims[0] * dims[1] * dims[2], dtype=np.uint32).reshape(dims)
-                voxel_indices = voxel_indices.reshape(
-                        (pow2, 2, pow2, 2, pow2, 2)).transpose(
-                                0, 2, 4, 1, 3, 5)[mask].reshape(-1, 2, 2, 2)
-                density_i = density.reshape(-1, 1)[voxel_indices]
-                colors_i = colors.reshape(-1, data_dim - 1)[voxel_indices]
-                bad_mask = ~(next_mask.reshape(pow2, 2, pow2, 2, pow2, 2).transpose(
-                        0, 2, 4, 1, 3, 5)[mask])
-                density_i[bad_mask] = 0
-                colors_i[bad_mask] = 0
-            else:
-                density_i = density.reshape((pow2, 2, pow2, 2, pow2, 2)).transpose(
-                        0, 2, 4, 1, 3, 5)[mask].reshape(-1, 2, 2, 2, 1)
-                colors_i = colors.reshape(
-                        (pow2, 2, pow2, 2, pow2, 2, data_dim - 1)).transpose(
-                        0, 2, 4, 1, 3, 5, 6)[mask].reshape(-1, 2, 2, 2, data_dim - 1)
+                # Data is not power of 2, pad it
+                npow2 = 2 * pow2
+                density = np.pad(density,
+                                 [(0, npow2 - dims[0]), (0, npow2 - dims[1]),
+                                  (0, npow2 - dims[2])])
+                colors = np.pad(colors,
+                                [(0, npow2 - dims[0]), (0, npow2 - dims[1]),
+                                 (0, npow2 - dims[2]), (0, 0)])
+
+            mask_indices = curr_indices[mask.reshape(-1)]
+            density_i = np.empty((nnodes, 2, 2, 2, 1), dtype=np.float16);
+            density_i[mask_indices] = density.reshape(
+                    pow2, 2, pow2, 2, pow2, 2, 1).transpose(
+                            0, 2, 4, 1, 3, 5, 6).reshape(
+                            -1, 2, 2, 2, 1)[mask.flatten()].astype(np.float16)
+            colors_i = np.empty((nnodes, 2, 2, 2, data_dim - 1), dtype=np.float16);
+            colors_i[mask_indices] = colors.reshape(
+                    pow2, 2, pow2, 2, pow2, 2, data_dim - 1).transpose(
+                            0, 2, 4, 1, 3, 5, 6).reshape(
+                            -1, 2, 2, 2, data_dim - 1)[mask.flatten()].astype(np.float16)
             data = np.concatenate([colors_i.astype(np.float16),
                                    density_i.astype(np.float16)], -1)
         else:
             # Construct an internal level
-            curr_indices = np.cumsum(mask.reshape(-1), dtype=np.uint32)
-            next_indices = np.cumsum(next_mask.reshape(-1), dtype=np.uint32) + nnodes
+            mg, img = morton_grid(pow2 * 2), inv_morton_grid(pow2 * 2)
+            next_indices = np.cumsum(next_mask.reshape(-1)[img], dtype=np.uint32)[mg] - 1
+            next_indices[~next_mask.reshape(-1)] = 0
 
-            child = (next_indices.reshape(pow2, 2, pow2, 2, pow2, 2) -
+            child = (next_indices.reshape(pow2, 2, pow2, 2, pow2, 2) + nnodes -
                      curr_indices.reshape(pow2, 1, pow2, 1, pow2, 1))
             child = child.reshape(pow2 * 2, pow2 * 2, pow2 * 2)
             child[~next_mask] = 0
             child = child.reshape(pow2, 2, pow2, 2, pow2, 2)
             child = child.transpose(0, 2, 4, 1, 3, 5).reshape(pow2 ** 3, 2, 2, 2)
-            child = child[mask.reshape(-1)]
+
+            child_tmp = np.empty((nnodes, 2, 2, 2), dtype=np.uint32);
+            child_tmp[curr_indices[mask.reshape(-1)]] = child[mask.reshape(-1)]
+            child = child_tmp
 
             # For now, all interior nodes will be empty
             data = np.zeros((nnodes, 2, 2, 2, data_dim), dtype=np.float16);
+            curr_indices = next_indices
 
         all_child.append(child)
         all_data.append(data)
