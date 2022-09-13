@@ -2,6 +2,7 @@
 NeRF + Drawing
 """
 import numpy as np
+import re
 import os
 import os.path as osp
 import base64
@@ -1058,6 +1059,7 @@ class Scene:
             cam_origin : Optional[np.ndarray] = None,
             compress: bool = True,
             instructions : List[str] = [],
+            css : str = "",
             url : str = 'localhost',
             port : int = 8888,
             open_browser : bool = False,
@@ -1079,6 +1081,7 @@ class Scene:
                                (will try to infer from cameras from add_camera_frustum if not given)
         :param compress: whether to compress the output npz file (slower but smaller)
         :param instructions: list of additional javascript instructions to execute (advanced)
+        :param css: additional CSS to inject
         :param url: str, URL for server (if display=True) default localhost
         :param port: int, port for server (if display=True) default 8888
                         (if not available, tries next up to 32)
@@ -1094,8 +1097,7 @@ class Scene:
                  url
         """
         if dirname is None:
-            from re import sub
-            dirname = osp.join("nerfvis_scenes", sub("[^0-9a-zA-Z_]", "", self.title))
+            dirname = osp.join("nerfvis_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title))
         os.makedirs(dirname, exist_ok=True)
 
         if world_up is not None:
@@ -1165,8 +1167,8 @@ class Scene:
         # Inject JS into HTML at </body>
         with open(index_html_src_path, "r") as f:
             html = f.read()
-        spl = html.split("</body>")
-        assert len(spl) == 2, "Malformed html"
+        bodyspl = html.split("</body>")
+        assert len(bodyspl) == 2, "Malformed html"
 
         JS_INJECT = \
 """
@@ -1177,7 +1179,12 @@ window.addEventListener("volrend_ready", async function() {
 </script>
 """.replace("{{instructions}}", ";\n".join(all_instructions))
 
-        html = spl[0] + JS_INJECT + "</body>" + spl[1]
+        html = bodyspl[0] + JS_INJECT + "</body>" + bodyspl[1]
+
+        if css:
+            stylespl = html.split("</style>")
+            assert len(bodyspl) >= 2, "Malformed html"
+            html = stylespl[0] + "\n" + css + "\n</style>" + "</style>".join(stylespl[1:])
         with open(index_html_path, "w") as f:
             f.write(html)
 
@@ -1262,7 +1269,7 @@ window.addEventListener("volrend_ready", async function() {
               height: int = 600,
               *args, **kwargs):
         """
-        Calls :code:`Scene.export` but in addition embeds inside a notebook. 
+        Calls :code:`Scene.export` but in addition embeds inside a notebook.
 
         NOTE 1: if the notebook is opened from a different notebook root folder
         in the future it will not work.
@@ -1289,15 +1296,25 @@ window.addEventListener("volrend_ready", async function() {
         :return: dirname, if it was not provided, returns the generated folder name;
                  url
         """
-        from IPython.display import display, IFrame  # Requires IPython
+        from IPython.display import display, IFrame, HTML  # Requires IPython
         import random, string
+        JUPYTER_ROOT = os.readlink('/proc/%s/cwd' % os.environ['JPY_PARENT_PID'])
+        dirname_rel = osp.join("nerfvis_ipy_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title))
+        dirname = osp.join(JUPYTER_ROOT, dirname_rel)
         randstr = ''.join(
                 random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         embed_name = "ipython_embed_" + randstr + ".html"
-        dirname, _ = self.export(*args, display=False, open_browser=False,
+        # Make height > 100 slightly to keep scroll inside the iframe
+        # kind of trippy, but otherwise when using scroll wheel to zoom it
+        # starts scrolling the notebook..
+        css_inject = "#main-wrapper {max-height:101vh}"
+        self.export(
+                dirname,
+                *args, display=False, open_browser=False,
+                css=css_inject,
                 serve_nonblocking=False, embed_output=True,
                                  output_html_name=embed_name,
                                  **kwargs)
-        html_file = os.path.join(dirname, embed_name)
-        display(IFrame(os.path.relpath(html_file), width, height))
+        html_file = os.path.join(dirname_rel, embed_name)
+        display(IFrame(html_file, width, height))
 
