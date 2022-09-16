@@ -1028,7 +1028,7 @@ class Scene:
         """
         Write to drawlist npz which you can open with volrend
         (:code:`volrend --draw <output.npz>`;
-         nerfvis_base branch recommended for more up-to-date experience)
+        nerfvis_base branch recommended for more up-to-date experience)
         as well as in the web viewer. Usually, it's easier to use one of
         :code:`Scene.export()`,
         :code:`Scene.display()`, or
@@ -1304,14 +1304,11 @@ window.addEventListener("volrend_ready", async function() {
         randstr = ''.join(
                 random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
         embed_name = "ipython_embed_" + randstr + ".html"
-        # Make height > 100 slightly to keep scroll inside the iframe
-        # kind of trippy, but otherwise when using scroll wheel to zoom it
-        # starts scrolling the notebook..
-        css_inject = "#main-wrapper {max-height:101vh}"
+        #  css_inject = "#main-wrapper {max-height:101vh}"
         self.export(
                 dirname,
                 *args, display=False, open_browser=False,
-                css=css_inject,
+                #  css=css_inject,
                 serve_nonblocking=False, embed_output=True,
                                  output_html_name=embed_name,
                                  **kwargs)

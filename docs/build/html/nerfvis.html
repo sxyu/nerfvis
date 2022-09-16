@@ -4,7 +4,7 @@
   <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Reference &mdash; nerfvis 0.1.0 documentation</title>
+  <title>Reference &mdash; nerfvis 0.1.4 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
@@ -75,12 +75,15 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">title</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Scene'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.__init__" title="Permalink to this definition"></a></dt>
-<dd><p>Scene for NeRF visualization. Add objects using <code class="code docutils literal notranslate"><span class="pre">add_*</span></code> and <code class="code docutils literal notranslate"><span class="pre">set_nerf</span></code> then use
-<code class="code docutils literal notranslate"><span class="pre">export()</span></code>/<code class="code docutils literal notranslate"><span class="pre">display()</span></code> to create a
-standalone web viewer you can open in a browser.
-Alternatively,
-use <code class="code docutils literal notranslate"><span class="pre">--draw</span></code> argument of the desktop volrend program or
-via <code class="code docutils literal notranslate"><span class="pre">Load</span> <span class="pre">Local</span></code> button of the online viewer.</p>
+<dd><p>Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
+Add objects using <code class="code docutils literal notranslate"><span class="pre">add_*</span></code> as seen below, then use
+<code class="code docutils literal notranslate"><span class="pre">export()</span></code>/<code class="code docutils literal notranslate"><span class="pre">display()</span></code>/<code class="code docutils literal notranslate"><span class="pre">embed()</span></code> to create a
+standalone web viewer you can open in a browser or embed in
+a notebook.</p>
+<ul class="simple">
+<li><p>Single scene quick import:  <cite>from nerfvis import scene</cite></p></li>
+<li><p>Multiple scenes:  <cite>from nerfvis import Scene</cite> then <cite>scene = Scene(‘title’)</cite></p></li>
+</ul>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>title</strong> – title to show when saving, default ‘Scene’.
@@ -144,7 +147,7 @@ Uses add_lines.</p>
 <li><p><strong>rotation</strong> – (3,), model rotation in axis-angle (common param)</p></li>
 <li><p><strong>scale</strong> – float, scale, default 1.0 (common param)</p></li>
 <li><p><strong>visible</strong> – bool, whether mesh should be visible on init, default true (depends on GET parameter in web version) (common param)</p></li>
-<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit (common param)</p></li>
+<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit. Default True (common param)</p></li>
 <li><p><strong>time</strong> – int, time at which the mesh should be displayed; -1=always display (default)
 (common param)</p></li>
 </ul>
@@ -194,7 +197,7 @@ Uses add_lines.</p>
 <li><p><strong>scale</strong> – float, scale, default 1.0 (common param)</p></li>
 <li><p><strong>visible</strong> – bool, whether mesh should be visible on init, default true
 (depends on GET parameter in web version) (common param)</p></li>
-<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit (common param)</p></li>
+<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit. Default true (common param)</p></li>
 <li><p><strong>time</strong> – int, time at which the mesh should be displayed; -1=always display (default)
 (common param)</p></li>
 </ul>
@@ -220,7 +223,7 @@ for which to draw the segments. If not given, draws 1-2-3-4…</p></li>
 <li><p><strong>scale</strong> – float, scale, default 1.0 (common param)</p></li>
 <li><p><strong>visible</strong> – bool, whether mesh should be visible on init, default true
 (depends on GET parameter in web version) (common param)</p></li>
-<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit (common param)</p></li>
+<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit. Default true (common param)</p></li>
 <li><p><strong>time</strong> – int, time at which the mesh should be displayed; -1=always display (default)
 (common param)</p></li>
 </ul>
@@ -245,7 +248,7 @@ for which to draw the segments. If not given, draws 1-2-3-4…</p></li>
 <li><p><strong>scale</strong> – float, scale, default 1.0 (common param)</p></li>
 <li><p><strong>visible</strong> – bool, whether mesh should be visible on init, default true
 (depends on GET parameter in web version) (common param)</p></li>
-<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit (common param)</p></li>
+<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit. Default true (common param)</p></li>
 <li><p><strong>time</strong> – int, time at which the mesh should be displayed; -1=always display (default)
 (common param)</p></li>
 </ul>
@@ -263,9 +266,10 @@ for which to draw the segments. If not given, draws 1-2-3-4…</p></li>
 <li><p><strong>name</strong> – an identifier for this object</p></li>
 <li><p><strong>points</strong> – (N, 3) float, list of points</p></li>
 <li><p><strong>faces</strong> – (N, face_size) int, list of faces; if not given,
-faces will be something like 1-2-3, 4-5-6, 7-8-9, etc</p></li>
+faces will be <code class="code docutils literal notranslate"><span class="pre">0-1-2,</span> <span class="pre">3-4-5,</span> <span class="pre">6-7-8</span></code>, etc (glDrawArrays)</p></li>
 <li><p><strong>face_size</strong> – int, one of 1,2,3. 3 means triangle mesh,
-1 means point cloud, and 2 means lines</p></li>
+1 means point cloud, and 2 means lines. By default is determined from faces
+(usually 3).</p></li>
 <li><p><strong>color</strong> – (3,) color, default is orange (common param)</p></li>
 <li><p><strong>vert_color</strong> – (N, 3) vertex color, optional (overrides color) (common param)</p></li>
 <li><p><strong>translation</strong> – (3,), model translation (common param)</p></li>
@@ -273,7 +277,9 @@ faces will be something like 1-2-3, 4-5-6, 7-8-9, etc</p></li>
 <li><p><strong>scale</strong> – float, scale, default 1.0 (common param)</p></li>
 <li><p><strong>visible</strong> – bool, whether mesh should be visible on init, default true
 (depends on GET parameter in web version) (common param)</p></li>
-<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit (common param)</p></li>
+<li><p><strong>unlit</strong> – bool, whether mesh should be rendered unlit.
+Use this if you want to render vertex colors directly
+without lighting. Default false. (common param)</p></li>
 <li><p><strong>time</strong> – int, time at which the mesh should be displayed; -1=always display (default)
 (common param)</p></li>
 </ul>
@@ -389,26 +395,37 @@ using these cameras</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.remove">
 <span class="sig-name descname"><span class="pre">remove</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.remove" title="Permalink to this definition"></a></dt>
-<dd><p>Remove an object with given name
-:param name: the name given to add_*</p>
+<dd><p>Remove an object with given name.
+Note: if you overwrite an object with the same name
+type and arguments, it will overwrite the
+object in the scene.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>name</strong> – the name given to add_*</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.remove_all">
 <span class="sig-name descname"><span class="pre">remove_all</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.remove_all" title="Permalink to this definition"></a></dt>
-<dd><p>Remove object with given names
-:param names: list of names as given to add_*</p>
+<dd><p>Remove object with given names</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>names</strong> – list of names as given to add_*</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.clear">
 <span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.clear" title="Permalink to this definition"></a></dt>
-<dd><p>Clear all objects</p>
+<dd><p>Clear all objects from the scene.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.add_volume">
-<span class="sig-name descname"><span class="pre">add_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.add_volume" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">add_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">colors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">radius</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">density_threshold</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_format</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'RGBA'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.add_volume" title="Permalink to this definition"></a></dt>
 <dd><p>Add a 3D volume using the PlenOctree renderer</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -529,9 +546,13 @@ conflict (common param)</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.write">
 <span class="sig-name descname"><span class="pre">write</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.write" title="Permalink to this definition"></a></dt>
-<dd><p>Write to drawlist npz which you can open with volrend (<code class="code docutils literal notranslate"><span class="pre">--draw</span></code>)
-as well as in the web viewer.
-Discretized NeRF will not be exported. Usually, it’s easier to use Scene.export()</p>
+<dd><p>Write to drawlist npz which you can open with volrend
+(<code class="code docutils literal notranslate"><span class="pre">volrend</span> <span class="pre">--draw</span> <span class="pre">&lt;output.npz&gt;</span></code>;
+nerfvis_base branch recommended for more up-to-date experience)
+as well as in the web viewer. Usually, it’s easier to use one of
+<code class="code docutils literal notranslate"><span class="pre">Scene.export()</span></code>,
+<code class="code docutils literal notranslate"><span class="pre">Scene.display()</span></code>, or
+<code class="code docutils literal notranslate"><span class="pre">Scene.emebd()</span></code></p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><p><strong>path</strong> – output npz path</p>
@@ -541,7 +562,7 @@ Discretized NeRF will not be exported. Usually, it’s easier to use Scene.expor
 
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.export">
-<span class="sig-name descname"><span class="pre">export</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_up</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_center</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_forward</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_origin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instructions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'localhost'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8888</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">open_browser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">serve_nonblocking</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nerfvis.Scene.export" title="Permalink to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">export</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dirname</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">display</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">world_up</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_center</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_forward</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cam_origin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">instructions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">css</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">url</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'localhost'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">8888</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">open_browser</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_html_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'index.html'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">embed_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">serve_nonblocking</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#nerfvis.Scene.export" title="Permalink to this definition"></a></dt>
 <dd><p>Write to a standalone web viewer</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -558,10 +579,17 @@ Discretized NeRF will not be exported. Usually, it’s easier to use Scene.expor
 (will try to infer from cameras from add_camera_frustum if not given)</p></li>
 <li><p><strong>compress</strong> – whether to compress the output npz file (slower but smaller)</p></li>
 <li><p><strong>instructions</strong> – list of additional javascript instructions to execute (advanced)</p></li>
+<li><p><strong>css</strong> – additional CSS to inject</p></li>
 <li><p><strong>url</strong> – str, URL for server (if display=True) default localhost</p></li>
 <li><p><strong>port</strong> – int, port for server (if display=True) default 8888
 (if not available, tries next up to 32)</p></li>
 <li><p><strong>open_browser</strong> – bool, if true then opens the web browser, if possible (default False)</p></li>
+<li><p><strong>embed_output</strong> – bool, if true, embeds the output in the html as self-loading
+base64/blob url instead of saving as NPZ.
+This may cause the page to load very slowly initially,
+but combines all data into a single html file.</p></li>
+<li><p><strong>serve_nonblocking</strong> – bool, if true, and display=True, open a server in another
+threading and continues execution</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -605,9 +633,11 @@ url</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="nerfvis.Scene.embed">
 <span class="sig-name descname"><span class="pre">embed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">600</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#nerfvis.Scene.embed" title="Permalink to this definition"></a></dt>
-<dd><p>Calls <code class="code docutils literal notranslate"><span class="pre">Scene.export</span></code> but in addition embeds inside a notebook;
-still requires port to be forwarded if on a server. Use port=..
-to chose one if desired (default 8888)</p>
+<dd><p>Calls <code class="code docutils literal notranslate"><span class="pre">Scene.export</span></code> but in addition embeds inside a notebook.</p>
+<p>NOTE 1: if the notebook is opened from a different notebook root folder
+in the future it will not work.</p>
+<p>NOTE 2: still writes files to ./nerfvis_scenes folder, and it may get large
+overtime. You may want to clean it up manually.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">

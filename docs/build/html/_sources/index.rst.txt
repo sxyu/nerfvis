@@ -32,7 +32,6 @@ Scene: holds objects. If you only use one scene, feel free to use :code:`from ne
 
 Names separated by :code:`/` will be collapsed into a tree in the layers panel in the output.
 
-
 Other common functions include `add_camera_frustum`, `add_mesh`, `add_line`, `add_lines`,
 `add_image`
 
@@ -43,4 +42,13 @@ Please see :ref:`nerfvis` for details.
    :caption: Contents:
 
    nerfvis
+
+
+Viewer controls
+====================
+
+* Left click and drag to orbit
+* Right click and drag, or :code:`CTRL+left` click and drag to pan
+* Mouse wheel, middle click and drag, or :code:`ALT+left` click and drag to zoom; alternatively use :code:`=`/:code:`SHIFT` + :code:`=`
+* Number keys 1-6 to change coordinate systems: Z up/down Y up/down X up/down resp.
 

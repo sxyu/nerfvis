@@ -153,7 +153,6 @@ You can also add meshes, points, lines (see docs).
 Note that each object e.g. cube, mesh, points, etc. must have a unique name to identify it
 right now. You may programmatically generate this. They will show up in the *layers* pane
 (top right of the html viewer)
-**New in 0.0.6: Use / in the name e.g. cubes/red/cube001 to put meshes into folders in the layers pane.**
 
 
 Please also `pip install torch svox tqdm scipy` for adding NeRF (`set_nerf`)
@@ -161,6 +160,13 @@ or `pip install trimesh` for using `add_mesh_from_file(path)`.
 
 To add cameras (also used for scaling scene, initializing camera etc), use 
 `add_camera_frustum(focal_length=.., image_width=.., image_height=.., z=..,  r=.., t=..)`
+
+## Viewer Controls
+
+- Left click and drag to orbit
+- Right click and drag, or CTRL+left click and drag to pan
+- Mouse wheel, middle click and drag, or ALT+left click and drag to zoom; alternatively use =/SHIFT+=
+- Number keys 1-6 to change coordinate systems: Z up/down Y up/down X up/down resp.
 
 
 ## Source of pre-compiled binaries
