@@ -355,7 +355,7 @@ def project_function_sparse(
            sample_count, coeff_count) # [sample_count, coeff_count]
     func_value = func_value.transpose(0, 1).reshape(
            sample_count, batch_size * C) # [sample_count, batch_size * C]
-    soln = torch.lstsq(func_value, basis_vals).solution[:basis_vals.size(1)]
+    soln = torch.linalg.lstsq(basis_vals, func_value).solution
     soln = soln.T.reshape(batch_size, -1)
     others = others[:, :1, :]
     others = others.reshape(batch_size, -1)
@@ -370,4 +370,3 @@ if __name__ == '__main__':
 
     coeffs, others = project_function_sparse(1, sphfunc_one, 10)
     print(coeffs)
-

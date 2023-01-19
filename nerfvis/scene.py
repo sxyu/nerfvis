@@ -807,7 +807,7 @@ class Scene:
         :param eval_fn:
                         - If :code:`use_dirs=False`: NeRF function taking a batch of points :code:`(B, 3)` and returning :code:`(rgb (B, 3), sigma (B, 1))` after activation applied.
 
-                        - If :code:`use_dirs=True` then this function should take points :code:`(B, 1, 3)` and kwarg 'dirs' :code:`(1, sh_proj_sample_count, 3)`; it should return :code:`(rgb (B, sh_proj_sample_count, 3), sigma (B, 1))` sigma activation
+                        - If :code:`use_dirs=True` then this function should take points :code:`(B, 1, 3)` and kwarg 'dirs' :code:`(1, sh_proj_sample_count, 3)`; it should return :code:`(rgb (B, sh_proj_sample_count, 3), sigma (B, sh_proj_sample_count, 1))` sigma activation
                             should be applied but rgb must NOT have activation applied for SH projection to work correctly.
 
         :param center: float or (3,), xyz center of volume to discretize
@@ -984,7 +984,7 @@ class Scene:
                        "image_height should be provided to set_nerf to use weight thresholding"
                 grid_weights = _calculate_grid_weights(rgb_sigma[..., -1:], c2w.float(), focal_length, image_width, image_height)
                 mask = grid_weights.reshape(-1) >= weight_thresh
-            grid = grid[mask]
+            grid = grid[mask.cpu()]
             rgb_sigma = rgb_sigma[mask]
             del mask
             assert grid.shape[0] > 0, "This NeRF is completely empty! Make sure you set the bounds reasonably"
@@ -1314,4 +1314,3 @@ window.addEventListener("volrend_ready", async function() {
                                  **kwargs)
         html_file = os.path.join(dirname_rel, embed_name)
         display(IFrame(html_file, width, height))
-
