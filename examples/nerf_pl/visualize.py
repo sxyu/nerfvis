@@ -1,20 +1,18 @@
-import torch
 import os
-import numpy as np
-from collections import defaultdict
-from tqdm import tqdm
-import imageio
 from argparse import ArgumentParser
+from collections import defaultdict
 
-from models.rendering import render_rays
-from models.nerf import *
+import numpy as np
+import torch
+from tqdm import tqdm
 
-from utils import load_ckpt
-
+import imageio
+import nerfvis
 from datasets import dataset_dict
 from datasets.depth_utils import *
-
-import nerfvis
+from models.nerf import *
+from models.rendering import render_rays
+from utils import load_ckpt
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
