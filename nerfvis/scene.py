@@ -985,7 +985,11 @@ class Scene:
             xx = (arr - offset[0]) / scale[0]
             yy = (arr - offset[1]) / scale[1]
             zz = (arr - offset[2]) / scale[2]
-            grid = torch.stack(torch.meshgrid(xx, yy, zz)).reshape(3, -1).T
+            grid = (
+                torch.stack(torch.meshgrid(xx, yy, zz, indexing="ij"))
+                .reshape(3, -1)
+                .T
+            )
 
             print("  Evaluating NeRF on a grid")
             out_chunks = []
