@@ -489,7 +489,11 @@ class Scene:
 
         im = np.array(im)[..., :3]
 
-        r = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
+        if r.ndim == 2 and r.shape[-1] == 3 and r.shape[-2] == 3:
+            # Shape is good already
+            pass
+        else:
+            r = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
         t = _to_np_array(t).astype(np.float32)
 
         grid_i = (r * grid.reshape(-1, 1, 3)).sum(-1) + t
@@ -868,7 +872,11 @@ class Scene:
         if r is not None and t is not None:
             c2w = np.eye(4, dtype=np.float32)[None].repeat(r.shape[0], axis=0)
             c2w[:, :3, 3] = t
-            c2w[:, :3, :3] = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
+            if r.ndim == 3 and r.shape[-1] == 3 and r.shape[-2] == 3:
+                # No conversion needed
+                c2w[:, :3, :3] = r
+            else:
+                c2w[:, :3, :3] = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
             c2w = torch.from_numpy(c2w).to(device=device)
         else:
             c2w = None
