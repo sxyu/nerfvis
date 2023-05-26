@@ -369,6 +369,7 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
+        assert points.ndim == 2 and points.shape[1] == 3, "points must be (N, 3)"
         self._add_common(name, **kwargs)
         points = _to_np_array(points)
         self.fields[name] = "points"
@@ -405,6 +406,7 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
+        assert points.ndim == 2 and points.shape[1] == 3, "points must be (N, 3)"
         self._add_common(name, **kwargs)
         points = _to_np_array(points)
         self.fields[name] = "mesh"
@@ -412,6 +414,9 @@ class Scene:
         if face_size is not None:
             self.fields[_f(name, "face_size")] = int(face_size)
             assert face_size >= 1 and face_size <= 3
+        if faces is not None:
+            assert faces.ndim == 2 and faces.shape[1] == face_size, \
+                    f"faces must be (N, face_size={face_size})"
         if faces is not None:
             self.fields[_f(name, "faces")] = _to_np_array(faces).astype(np.int32)
         self._update_bb(points, **kwargs)
@@ -424,7 +429,8 @@ class Scene:
                   focal_length : float = 1111.11,
                   z: float = -0.1,
                   image_size : int = 64,
-                  opengl: Optional[bool] = None):
+                  opengl: Optional[bool] = None,
+                  **kwargs):
         """
         Add an image (as plane mesh with vertex colors)
 
@@ -442,10 +448,12 @@ class Scene:
                   NOTE: kind of weirdly (but to be consistent
                   with add_camera_frustum),for OpenGL, z needs to be negative,
                   while for OpenCV it should be positive.
-        :param image_size: size of image for display (only if using path)
+        :param image_size: size of image for display.
+                           NOTE: do not make this too large or it may crash!
         :param opengl: if True use OpenGL coordinates (NeRF default);
                        else use OpenCV. Default: depends on if set_opencv()
                        was used.
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
         """
         if opengl is None:
             opengl = not self.default_opencv
@@ -501,9 +509,11 @@ class Scene:
         self.add_mesh(
             name,
             grid_i,
-            faces=faces,
+            faces=faces.reshape(-1, 3),
+            face_size=3,
             vert_color=im.reshape(-1, 3).astype(np.float32) / 255.0,
             unlit=True,
+            **kwargs
         )
 
 
@@ -564,7 +574,9 @@ class Scene:
         if r is not None:
             assert t is not None, "r,t should be both set or both unset"
             r = _to_np_array(r)
-            if r.ndim == 1 or (r.ndim == 2 and t.ndim == 1):
+            if t is not None:
+                t = _to_np_array(t)
+            if r.ndim == 1 or (r.ndim == 2 and t is not None and t.ndim == 1):
                 r = r[None]
             if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
                 # Matrix
