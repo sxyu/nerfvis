@@ -415,8 +415,8 @@ class Scene:
             self.fields[_f(name, "face_size")] = int(face_size)
             assert face_size >= 1 and face_size <= 3
         if faces is not None:
-            assert faces.ndim == 2 and faces.shape[1] == face_size, \
-                    f"faces must be (N, face_size={face_size})"
+            assert faces.ndim == 2 and (face_size is None or faces.shape[1] == face_size), \
+                    f"faces must be (N, face_size={face_size if face_size is not None else -1})"
         if faces is not None:
             self.fields[_f(name, "faces")] = _to_np_array(faces).astype(np.int32)
         self._update_bb(points, **kwargs)
