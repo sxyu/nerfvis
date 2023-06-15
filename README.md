@@ -98,8 +98,17 @@ although the original NeRF/PlenOctrees used OpenGL.
 
 ```python
 from nerfvis import scene
+import numpy as np
+
 # Set -y up world, and also flips the image
 scene.set_opencv() 
+
+# Example data
+f = 1111.0
+images = np.random.rand(1, 800, 800, 3)
+c2ws = np.eye(4)[None]
+point_cloud = np.random.randn(10000, 3) * 0.1
+point_cloud_errs = np.random.rand(10000)
 
 # To show have errors
 colors = np.zeros_like(point_cloud)
@@ -109,16 +118,16 @@ scene.add_points("points", point_cloud, vert_color=colors)
 # scene.add_points("points", point_cloud, color=[0.0, 0.0, 0.0])
 scene.add_camera_frustum("cameras", r=c2ws[:, :3, :3], t=c2ws[:, :3, 3], focal_length=f,
                          image_width=images.shape[2], image_height=images.shape[1],
-                         z=0.1, connect=False, color=[1.0, 0.0, 0.0])
+                         z=0.5, connect=False, color=[1.0, 0.0, 0.0])
 
-for i in range(len(c2w)):
+for i in range(len(c2ws)):
     scene.add_image(
                   f"images/i",
                   images[i],
                   r=c2ws[i, :3, :3], t=c2ws[i, :3, 3],
-                  focal_lenght=f,
+                  focal_length=f,
                   z=0.1,
-                  image_size)
+                  image_size=64)
 scene.add_axes()
 scene.display()
 ```
