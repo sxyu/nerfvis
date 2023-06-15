@@ -4,6 +4,7 @@ NeRF + Drawing
 import base64
 import os
 import os.path as osp
+import platform
 import re
 import threading
 import warnings
@@ -1331,7 +1332,12 @@ window.addEventListener("volrend_ready", async function() {
 
             class LocalHandler(SimpleHTTPRequestHandler):
                 def __init__(self, *args, **kwargs):
-                    super().__init__(*args, directory=dirname, **kwargs)
+                    if tuple(map(int, platform.python_version_tuple())) < (3, 7, 0):
+                        # Python < 3.7 legacy
+                        assert dirname is not None
+                        os.chdir(dirname)
+                    else:
+                        super().__init__(*args, directory=dirname, **kwargs)
 
             global _server_thds
             global _servers
