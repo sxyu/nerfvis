@@ -126,7 +126,7 @@ for i in range(len(c2ws)):
                   images[i],
                   r=c2ws[i, :3, :3], t=c2ws[i, :3, 3],
                   focal_length=f,
-                  z=0.1,
+                  z=0.5,
                   image_size=64)
 scene.add_axes()
 scene.display()
