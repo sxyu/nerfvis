@@ -1,37 +1,45 @@
 """
 NeRF + Drawing
 """
-import numpy as np
-import re
+import base64
 import os
 import os.path as osp
-import base64
-from typing import Optional, List, Union, Callable, Tuple, Any, Dict
-import warnings
+import re
 import threading
+import warnings
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+
 from . import utils
 
 _servers = []
 _server_thds = []
 
-def _f(name : str, field : str):
-    return name + '__' + field
 
-def _format_vec3(vec : np.ndarray):
-    return f'[{vec[0]}, {vec[1]}, {vec[2]}]'
+def _f(name: str, field: str):
+    return name + "__" + field
 
-def _scipy_rotation_from_auto(rot : np.ndarray):
+
+def _format_vec3(vec: np.ndarray):
+    return f"[{vec[0]}, {vec[1]}, {vec[2]}]"
+
+
+def _scipy_rotation_from_auto(rot: np.ndarray):
     if rot.shape[-1] == 3:
         q = utils.Rotation.from_rotvec(rot)
     elif rot.shape[-1] == 4:
         q = utils.Rotation.from_quat(rot)
     elif rot.shape[-1] == 9:
-        q = utils.Rotation.from_matrix(rot.reshape(list(rot.shape[:-1]) + [3, 3]))
+        q = utils.Rotation.from_matrix(
+            rot.reshape(list(rot.shape[:-1]) + [3, 3])
+        )
     else:
         raise NotImplementedError
     return q
 
-def _angle_axis_rotate_vector_np(r : np.ndarray, v : np.ndarray):
+
+def _angle_axis_rotate_vector_np(r: np.ndarray, v: np.ndarray):
     """
     Rotate each vector by corresponding axis-angle.
     The formula is from Ceres-solver.
@@ -54,7 +62,9 @@ def _angle_axis_rotate_vector_np(r : np.ndarray, v : np.ndarray):
         perp = np.cross(np.broadcast_to(axis, v_good.shape), v_good)
         dot = np.sum(axis * v_good, axis=-1, keepdims=True)
         result[good_mask_v] = (
-            v_good * cos_theta + perp * sin_theta + axis * (dot * (1 - cos_theta))
+            v_good * cos_theta
+            + perp * sin_theta
+            + axis * (dot * (1 - cos_theta))
         )
     if v_bad.size:
         # From Ceres
@@ -63,7 +73,8 @@ def _angle_axis_rotate_vector_np(r : np.ndarray, v : np.ndarray):
         )
     return result
 
-def _quaternion_rotate_vector_np(q : np.ndarray, pt : np.ndarray):
+
+def _quaternion_rotate_vector_np(q: np.ndarray, pt: np.ndarray):
     """
     Rotate a point pt by a quaternion (xyzw, Hamilton) will be normalized
     Derived from cere::UnitQuaternionRotatePoint (rotation.h)
@@ -75,7 +86,8 @@ def _quaternion_rotate_vector_np(q : np.ndarray, pt : np.ndarray):
     uv = np.cross(q[..., :-1], pt) * 2
     return pt + q[..., -1:] * uv + np.cross(q[..., :-1], uv)
 
-def _rotate_vector_np(rot : np.ndarray, pt : np.ndarray):
+
+def _rotate_vector_np(rot: np.ndarray, pt: np.ndarray):
     """
     Rotate a vector, using either an axis-angle, quaternion (xyzw), or flattened rotation matrix
     :param rot: (B, 3), (B, 4), or (B, 9), the rotations
@@ -87,15 +99,18 @@ def _rotate_vector_np(rot : np.ndarray, pt : np.ndarray):
     elif rot.shape[-1] == 4:
         return _quaternion_rotate_vector_np(rot, pt)
     elif rot.shape[-1] == 9:
-        return np.matmul(rot.reshape(list(rot.shape[:-1]) + [3, 3]), pt[..., None])[..., 0]
+        return np.matmul(
+            rot.reshape(list(rot.shape[:-1]) + [3, 3]), pt[..., None]
+        )[..., 0]
     else:
         raise NotImplementedError
 
+
 def _to_np_array(obj) -> np.ndarray:
     if not isinstance(obj, np.ndarray):
-        if hasattr(obj, 'cpu'):
+        if hasattr(obj, "cpu"):
             obj = obj.cpu()
-        if hasattr(obj, 'detach'):
+        if hasattr(obj, "detach"):
             obj = obj.detach()
         arr = np.array(obj)
     else:
@@ -107,7 +122,7 @@ def _to_np_array(obj) -> np.ndarray:
 
 
 class Scene:
-    def __init__(self, title : str = "Scene"):
+    def __init__(self, title: str = "Scene"):
         """
         Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
         Add objects using :code:`add_*` as seen below, then use
@@ -123,11 +138,11 @@ class Scene:
                       You can change it later by setting scene.title = '...'.
         """
         self.title = title
-        self.fields : Dict["str", Any] = {}
+        self.fields: Dict["str", Any] = {}
 
         self.world_up = None
         self.cam_forward = None
-        inf = float('inf')
+        inf = float("inf")
         self.bb_min = np.array([inf, inf, inf])
         self.bb_max = np.array([-inf, -inf, -inf])
         self.default_opencv = False
@@ -135,16 +150,23 @@ class Scene:
     def _add_common(self, name, **kwargs):
         assert isinstance(name, str), "Name must be a string"
         if "time" in kwargs:
-            self.fields[_f(name, "time")] = _to_np_array(kwargs["time"]).astype(np.uint32)
+            self.fields[_f(name, "time")] = _to_np_array(
+                kwargs["time"]
+            ).astype(np.uint32)
         if "color" in kwargs:
-            self.fields[_f(name, "color")] = _to_np_array(kwargs["color"]).astype(np.float32)
+            self.fields[_f(name, "color")] = _to_np_array(
+                kwargs["color"]
+            ).astype(np.float32)
         if "scale" in kwargs:
             self.fields[_f(name, "scale")] = np.float32(kwargs["scale"])
         if "translation" in kwargs:
             self.fields[_f(name, "translation")] = np.array(
-                    kwargs["translation"]).astype(np.float32)
+                kwargs["translation"]
+            ).astype(np.float32)
         if "rotation" in kwargs:
-            self.fields[_f(name, "rotation")] = _to_np_array(kwargs["rotation"]).astype(np.float32)
+            self.fields[_f(name, "rotation")] = _to_np_array(
+                kwargs["rotation"]
+            ).astype(np.float32)
         if "visible" in kwargs:
             self.fields[_f(name, "visible")] = int(kwargs["visible"])
         if "unlit" in kwargs:
@@ -177,7 +199,7 @@ class Scene:
         self.bb_min = np.minimum(min_xyz, self.bb_min)
         self.bb_max = np.maximum(max_xyz, self.bb_max)
 
-    def add_cube(self, name : str = "cube", **kwargs):
+    def add_cube(self, name: str = "cube", **kwargs):
         """
         Add a cube with side length 1 (verts {-0.5, 0.5}^3).
 
@@ -218,7 +240,7 @@ class Scene:
         """
         self.title = title
 
-    def add_wireframe_cube(self, name : str, **kwargs):
+    def add_wireframe_cube(self, name: str, **kwargs):
         """
         Add a wireframe cube with side length 1 (verts {-0.5, 0.5}^3).
         Uses add_lines.
@@ -258,8 +280,13 @@ class Scene:
             **kwargs,
         )
 
-    def add_sphere(self, name : str = "sphere",
-                   rings : Optional[int]=None, sectors : Optional[int]=None, **kwargs):
+    def add_sphere(
+        self,
+        name: str = "sphere",
+        rings: Optional[int] = None,
+        sectors: Optional[int] = None,
+        **kwargs,
+    ):
         """
         Add a UV sphere with radius 1
 
@@ -288,9 +315,7 @@ class Scene:
         self._update_bb(p1, **kwargs)
         self._update_bb(p2, **kwargs)
 
-    def add_line(self, name : str,
-                 a : np.ndarray,
-                 b : np.ndarray, **kwargs):
+    def add_line(self, name: str, a: np.ndarray, b: np.ndarray, **kwargs):
         """
         Add a single line segment from a to b
 
@@ -317,10 +342,13 @@ class Scene:
         self._update_bb(a, **kwargs)
         self._update_bb(b, **kwargs)
 
-    def add_lines(self, name : str,
-                 points : np.ndarray,
-                 segs : Optional[np.ndarray] = None,
-                 **kwargs):
+    def add_lines(
+        self,
+        name: str,
+        points: np.ndarray,
+        segs: Optional[np.ndarray] = None,
+        **kwargs,
+    ):
         """
         Add a series of line segments (in browser, lines are always size 1 right now)
 
@@ -347,11 +375,9 @@ class Scene:
             self.fields[_f(name, "segs")] = _to_np_array(segs).astype(np.int32)
         self._update_bb(points, **kwargs)
 
-    def add_points(self,
-                   name : str,
-                   points : np.ndarray,
-                   point_size : float = 1.0,
-                   **kwargs):
+    def add_points(
+        self, name: str, points: np.ndarray, point_size: float = 1.0, **kwargs
+    ):
         """
         Add a point cloud (in browser, points are always size 1 right now)
 
@@ -378,11 +404,14 @@ class Scene:
             self.fields[_f(name, "point_size")] = np.float32(point_size)
         self._update_bb(points, **kwargs)
 
-    def add_mesh(self, name : str,
-                 points : np.ndarray,
-                 faces : Optional[np.ndarray]=None,
-                 face_size : Optional[int]=None,
-                 **kwargs):
+    def add_mesh(
+        self,
+        name: str,
+        points: np.ndarray,
+        faces: Optional[np.ndarray] = None,
+        face_size: Optional[int] = None,
+        **kwargs,
+    ):
         """
         Add a general mesh
 
@@ -417,7 +446,6 @@ class Scene:
         if faces is not None:
             assert faces.ndim == 2 and (face_size is None or faces.shape[1] == face_size), \
                     f"faces must be (N, face_size={face_size if face_size is not None else -1})"
-        if faces is not None:
             self.fields[_f(name, "faces")] = _to_np_array(faces).astype(np.int32)
         self._update_bb(points, **kwargs)
 
@@ -458,6 +486,7 @@ class Scene:
         if opengl is None:
             opengl = not self.default_opencv
         from PIL import Image  # pip install pillow
+
         if isinstance(image, str):
             im = Image.open(str(image))
         else:
@@ -485,7 +514,9 @@ class Scene:
         if opengl:
             grid[..., 1] *= -1.0
 
-        faces = np.empty(((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32)
+        faces = np.empty(
+            ((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32
+        )
         arrx = np.arange((image_size - 1))
         arry = np.arange((vis_h - 1)) * image_size
         arr = (arry[:, None] + arrx[None]).flatten()
@@ -516,18 +547,19 @@ class Scene:
             **kwargs
         )
 
-
     def add_camera_frustum(
-                 self, name : str,
-                 focal_length : Optional[float] = None,
-                 image_width : Optional[float] = None,
-                 image_height : Optional[float] = None,
-                 z : Optional[float] = None,
-                 r : Optional[np.ndarray] = None,
-                 t : Optional[np.ndarray] = None,
-                 connect : bool = False,
-                 update_view : bool = True,
-                 **kwargs):
+        self,
+        name: str,
+        focal_length: Optional[float] = None,
+        image_width: Optional[float] = None,
+        image_height: Optional[float] = None,
+        z: Optional[float] = None,
+        r: Optional[np.ndarray] = None,
+        t: Optional[np.ndarray] = None,
+        connect: bool = False,
+        update_view: bool = True,
+        **kwargs,
+    ):
         """
         Add one or more ideal perspective camera frustums
 
@@ -622,8 +654,9 @@ class Scene:
         if t is not None:
             self._update_bb(t, **kwargs)
 
-
-    def add_mesh_from_file(self, path : str, name_suffix : str="", center : bool=False, **kwargs):
+    def add_mesh_from_file(
+        self, path: str, name_suffix: str = "", center: bool = False, **kwargs
+    ):
         """
         Add a mesh from path using trimesh
 
@@ -636,17 +669,26 @@ class Scene:
         Rest of keyword arguments passed to add_mesh
         """
         import trimesh  # pip install trimesh
-        mesh : trimesh.Trimesh = trimesh.load(path, force='mesh')
-        if hasattr(mesh.visual, 'vertex_colors') and len(mesh.visual.vertex_colors):
-            kwargs['vert_color'] = mesh.visual.vertex_colors[..., :3].astype(np.float32) / 255.0
+
+        mesh: trimesh.Trimesh = trimesh.load(path, force="mesh")
+        if hasattr(mesh.visual, "vertex_colors") and len(
+            mesh.visual.vertex_colors
+        ):
+            kwargs["vert_color"] = (
+                mesh.visual.vertex_colors[..., :3].astype(np.float32) / 255.0
+            )
         verts = _to_np_array(mesh.vertices)
         if center:
             verts = verts - np.mean(verts, axis=0)
-        self.add_mesh(osp.basename(path).replace('.', '_') + name_suffix, points=verts,
-                 faces=mesh.faces, **kwargs)
+        self.add_mesh(
+            osp.basename(path).replace(".", "_") + name_suffix,
+            points=verts,
+            faces=mesh.faces,
+            **kwargs,
+        )
         self._update_bb(verts, **kwargs)
 
-    def add_axes(self, name : str = "axes", length : float = 1.0, **kwargs):
+    def add_axes(self, name: str = "axes", length: float = 1.0, **kwargs):
         """
         Add RGB-XYZ axes at [0, 0, 0] (as hardcoded lines)
 
@@ -657,32 +699,44 @@ class Scene:
 
         Rest of keyword arguments passed to add_lines
         """
-        points = np.array([
-                        [0.0, 0.0, 0.0],
-                        [length, 0.0, 0.0],
-                        [0.0, 0.0, 0.0],
-                        [0.0, length, 0.0],
-                        [0.0, 0.0, 0.0],
-                        [0.0, 0.0, length],
-                    ], dtype=np.float32)
-        self.add_lines(name, points=points,
-                    segs=np.array([
-                            [0, 1],
-                            [2, 3],
-                            [4, 5],
-                        ], dtype=np.int32),
-                    vert_color=np.array([
-                            [1.0, 0.0, 0.0],
-                            [1.0, 0.0, 0.0],
-                            [0.0, 1.0, 0.0],
-                            [0.0, 1.0, 0.0],
-                            [0.0, 0.0, 1.0],
-                            [0.0, 0.0, 1.0],
-                        ], dtype=np.int32),
-                **kwargs)
+        points = np.array(
+            [
+                [0.0, 0.0, 0.0],
+                [length, 0.0, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, length, 0.0],
+                [0.0, 0.0, 0.0],
+                [0.0, 0.0, length],
+            ],
+            dtype=np.float32,
+        )
+        self.add_lines(
+            name,
+            points=points,
+            segs=np.array(
+                [
+                    [0, 1],
+                    [2, 3],
+                    [4, 5],
+                ],
+                dtype=np.int32,
+            ),
+            vert_color=np.array(
+                [
+                    [1.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 1.0],
+                    [0.0, 0.0, 1.0],
+                ],
+                dtype=np.int32,
+            ),
+            **kwargs,
+        )
         self._update_bb(points, **kwargs)
 
-    def remove(self, name : str):
+    def remove(self, name: str):
         """
         Remove an object with given name.
         Note: if you overwrite an object with the same name
@@ -693,7 +747,7 @@ class Scene:
         """
         self.remove_all([name])
 
-    def remove_all(self, names : List[str]):
+    def remove_all(self, names: List[str]):
         """
         Remove object with given names
 
@@ -701,7 +755,7 @@ class Scene:
         """
         to_delete = []
         for name in names:
-            prefix = name + '__'
+            prefix = name + "__"
             for key in self.fields:
                 if key.startswith(prefix) or key == name:
                     to_delete.append(key)
@@ -714,15 +768,16 @@ class Scene:
         """
         self.fields.clear()
 
-    def add_volume(self,
-                   name: str,
-                   density : np.ndarray,
-                   colors : np.ndarray,
-                   radius: float = 1.0,
-                   density_threshold: float = 1.0,
-                   data_format: str = "RGBA",
-                   **kwargs
-               ):
+    def add_volume(
+        self,
+        name: str,
+        density: np.ndarray,
+        colors: np.ndarray,
+        radius: float = 1.0,
+        density_threshold: float = 1.0,
+        data_format: str = "RGBA",
+        **kwargs,
+    ):
         """
         Add a 3D volume using the PlenOctree renderer
 
@@ -749,9 +804,12 @@ class Scene:
         density = _to_np_array(density)
         colors = _to_np_array(colors)
         tree_data = utils.vol2plenoctree(
-                density, colors, radius,
-                density_threshold=density_threshold,
-                data_format=data_format)
+            density,
+            colors,
+            radius,
+            density_threshold=density_threshold,
+            data_format=data_format,
+        )
         self._add_common(name, **kwargs)
         self.fields[name] = "volume"
         for k in tree_data:
@@ -778,7 +836,9 @@ class Scene:
         self.fields[name] = "volume"
         for k in tree_data:
             self.fields[_f(name, k)] = tree_data[k]
-        radius = 0.5 / tree_data.get('invradius3', tree_data.get('invradius', None))
+        radius = 0.5 / tree_data.get(
+            "invradius3", tree_data.get("invradius", None)
+        )
         if isinstance(radius, float):
             radius = np.array([radius] * 3, dtype=np.float32)
         self._update_bb(-radius, **kwargs)
@@ -791,30 +851,34 @@ class Scene:
         warnings.warn("set_nerf is deprecated, please use add_nerf")
         self.add_nerf("nerf", *args, **kwargs)
 
-    def add_nerf(self,
-                 name: str,
-                 eval_fn : Callable[..., Tuple[Any, Any]],
-                 center: Union[Tuple[float, float, float], List[float], float, np.ndarray, None]
-                        = None,
-                 radius: Union[Tuple[float, float, float], List[float], float, np.ndarray, None]
-                        = None,
-                 scale : float = 1.0,
-                 reso : int = 256,
-                 use_dirs : bool = False,
-                 sh_deg : int = 1,
-                 sh_proj_sample_count : int = 15,
-                 sh_proj_use_sparse : bool = True,
-                 sigma_thresh : float = 3.0,
-                 weight_thresh : float = 0.001,
-                 r : Optional[Any] = None,
-                 t : Optional[Any] = None,
-                 focal_length : Optional[Union[float, Tuple[float, float]]] = None,
-                 image_width : Optional[float] = None,
-                 image_height : Optional[float] = None,
-                 sigma_multiplier : float = 1.0,
-                 chunk : int=720720,
-                 device : str = "cuda:0",
-                 **kwargs):
+    def add_nerf(
+        self,
+        name: str,
+        eval_fn: Callable[..., Tuple[Any, Any]],
+        center: Union[
+            Tuple[float, float, float], List[float], float, np.ndarray, None
+        ] = None,
+        radius: Union[
+            Tuple[float, float, float], List[float], float, np.ndarray, None
+        ] = None,
+        scale: float = 1.0,
+        reso: int = 256,
+        use_dirs: bool = False,
+        sh_deg: int = 1,
+        sh_proj_sample_count: int = 15,
+        sh_proj_use_sparse: bool = True,
+        sigma_thresh: float = 3.0,
+        weight_thresh: float = 0.001,
+        r: Optional[Any] = None,
+        t: Optional[Any] = None,
+        focal_length: Optional[Union[float, Tuple[float, float]]] = None,
+        image_width: Optional[float] = None,
+        image_height: Optional[float] = None,
+        sigma_multiplier: float = 1.0,
+        chunk: int = 720720,
+        device: str = "cuda:0",
+        **kwargs,
+    ):
         """
         Discretize and display a NeRF (low quality, for visualization purposes only).
         Currently only supports PyTorch NeRFs.
@@ -823,7 +887,7 @@ class Scene:
         :param eval_fn:
                         - If :code:`use_dirs=False`: NeRF function taking a batch of points :code:`(B, 3)` and returning :code:`(rgb (B, 3), sigma (B, 1))` after activation applied.
 
-                        - If :code:`use_dirs=True` then this function should take points :code:`(B, 1, 3)` and kwarg 'dirs' :code:`(1, sh_proj_sample_count, 3)`; it should return :code:`(rgb (B, sh_proj_sample_count, 3), sigma (B, 1))` sigma activation
+                        - If :code:`use_dirs=True` then this function should take points :code:`(B, 1, 3)` and kwarg 'dirs' :code:`(1, sh_proj_sample_count, 3)`; it should return :code:`(rgb (B, sh_proj_sample_count, 3), sigma (B, sh_proj_sample_count, 1))` sigma activation
                             should be applied but rgb must NOT have activation applied for SH projection to work correctly.
 
         :param center: float or (3,), xyz center of volume to discretize
@@ -867,6 +931,7 @@ class Scene:
                     (common param)
         """
         import torch
+
         if center is None and not np.isinf(self.bb_min).any():
             center = (self.bb_min + self.bb_max) * 0.5
         if radius is None and not np.isinf(self.bb_min).any():
@@ -895,10 +960,15 @@ class Scene:
 
         import torch
         from tqdm import tqdm
+
         from svox import N3Tree
         from svox.helpers import _get_c_extension
-        from .utils.sh import project_function_sparse, project_function
-        project_fun = project_function_sparse if sh_proj_use_sparse else project_function
+
+        from .utils.sh import project_function, project_function_sparse
+
+        project_fun = (
+            project_function_sparse if sh_proj_use_sparse else project_function
+        )
 
         _C = _get_c_extension()
         with torch.no_grad():
@@ -906,7 +976,9 @@ class Scene:
             sh_dim = (sh_deg + 1) ** 2
             data_format = f"SH{sh_dim}" if use_dirs else "RGBA"
             init_grid_depth = reso.bit_length() - 2
-            assert 2 ** (init_grid_depth + 1) == reso, "Grid size must be a power of 2"
+            assert (
+                2 ** (init_grid_depth + 1) == reso
+            ), "Grid size must be a power of 2"
             tree = N3Tree(
                 N=2,
                 init_refine=0,
@@ -926,7 +998,11 @@ class Scene:
             xx = (arr - offset[0]) / scale[0]
             yy = (arr - offset[1]) / scale[1]
             zz = (arr - offset[2]) / scale[2]
-            grid = torch.stack(torch.meshgrid(xx, yy, zz)).reshape(3, -1).T
+            grid = (
+                torch.stack(torch.meshgrid(xx, yy, zz, indexing="ij"))
+                .reshape(3, -1)
+                .T
+            )
 
             print("  Evaluating NeRF on a grid")
             out_chunks = []
@@ -938,21 +1014,27 @@ class Scene:
                 grid_chunk = grid[i : i + chunk].cuda()
                 # TODO: support mip-NeRF
                 if use_dirs:
+
                     def _spherical_func(viewdirs):
-                        raw_rgb, sigma = eval_fn(grid_chunk[:, None], dirs=viewdirs)
+                        raw_rgb, sigma = eval_fn(
+                            grid_chunk[:, None], dirs=viewdirs
+                        )
                         return raw_rgb, sigma
 
                     rgb, sigma = project_fun(
-                            order=sh_deg,
-                            spherical_func=_spherical_func,
-                            sample_count=sh_proj_sample_count,
-                            device=grid_chunk.device)
+                        order=sh_deg,
+                        spherical_func=_spherical_func,
+                        sample_count=sh_proj_sample_count,
+                        device=grid_chunk.device,
+                    )
                 else:
                     rgb, sigma = eval_fn(grid_chunk)
                     if rgb.shape[-1] == 1:
-                        rgb = rgb.expand(-1, 3) # Grayscale
-                    elif rgb.shape[-1] != 3 and str(tree.data_format) == 'RGBA':
-                        tree.expand(f'SH{rgb.shape[-1] // 3}')
+                        rgb = rgb.expand(-1, 3)  # Grayscale
+                    elif (
+                        rgb.shape[-1] != 3 and str(tree.data_format) == "RGBA"
+                    ):
+                        tree.expand(f"SH{rgb.shape[-1] // 3}")
 
                 rgb_sigma = torch.cat([rgb, sigma], dim=-1)
                 del grid_chunk, rgb, sigma
@@ -960,8 +1042,10 @@ class Scene:
             rgb_sigma = torch.cat(out_chunks, 0)
             del out_chunks
 
-            def _calculate_grid_weights(sigmas, c2w, focal_length, image_width, image_height):
-                print('  Performing weight thresholding ')
+            def _calculate_grid_weights(
+                sigmas, c2w, focal_length, image_width, image_height
+            ):
+                print("  Performing weight thresholding ")
                 # Weight thresholding impl
                 opts = _C.RenderOptions()
                 opts.step_size = 1e-5
@@ -979,7 +1063,11 @@ class Scene:
                 grid_data = sigmas.reshape((reso, reso, reso)).contiguous()
                 maximum_weight = torch.zeros_like(grid_data)
                 camspace_trans = torch.diag(
-                    torch.tensor([1, -1, -1, 1], dtype=sigmas.dtype, device=sigmas.device)
+                    torch.tensor(
+                        [1, -1, -1, 1],
+                        dtype=sigmas.dtype,
+                        device=sigmas.device,
+                    )
                 )
                 for idx in tqdm(range(c2w.shape[0])):
                     cam.c2w = c2w[idx]
@@ -999,17 +1087,36 @@ class Scene:
                 mask = rgb_sigma[..., -1] >= sigma_thresh
             else:
                 # Weight thresh
-                assert (focal_length is not None and image_height is not None and
-                        image_width is not None), "All of r, t, focal_length, image_width, " \
-                       "image_height should be provided to set_nerf to use weight thresholding"
-                grid_weights = _calculate_grid_weights(rgb_sigma[..., -1:], c2w.float(), focal_length, image_width, image_height)
+                assert (
+                    focal_length is not None
+                    and image_height is not None
+                    and image_width is not None
+                ), (
+                    "All of r, t, focal_length, image_width, "
+                    "image_height should be provided to set_nerf to use weight thresholding"
+                )
+                grid_weights = _calculate_grid_weights(
+                    rgb_sigma[..., -1:],
+                    c2w.float(),
+                    focal_length,
+                    image_width,
+                    image_height,
+                )
                 mask = grid_weights.reshape(-1) >= weight_thresh
-            grid = grid[mask]
+            grid = grid[mask.cpu()]
             rgb_sigma = rgb_sigma[mask]
             del mask
-            assert grid.shape[0] > 0, "This NeRF is completely empty! Make sure you set the bounds reasonably"
-            print("  Grid shape =", grid.shape, "min =", grid.min(dim=0).values,
-                    " max =", grid.max(dim=0).values)
+            assert (
+                grid.shape[0] > 0
+            ), "This NeRF is completely empty! Make sure you set the bounds reasonably"
+            print(
+                "  Grid shape =",
+                grid.shape,
+                "min =",
+                grid.min(dim=0).values,
+                " max =",
+                grid.max(dim=0).values,
+            )
             grid = grid.cuda()
 
             torch.cuda.empty_cache()
@@ -1029,22 +1136,21 @@ class Scene:
 
             tree.shrink_to_fit()
             tree_data = {
-                "data_dim" : tree.data_dim,
-                "data_format" : repr(tree.data_format),
-                "child" : tree.child.cpu(),
-                "invradius3" : tree.invradius.cpu(),
-                "offset" : tree.offset.cpu(),
-                "data": tree.data.data.half().cpu().numpy()
+                "data_dim": tree.data_dim,
+                "data_format": repr(tree.data_format),
+                "child": tree.child.cpu(),
+                "invradius3": tree.invradius.cpu(),
+                "offset": tree.offset.cpu(),
+                "data": tree.data.data.half().cpu().numpy(),
             }
-            if 'nerf_scale' in kwargs:
-                kwargs['scale'] = kwargs['nerf_scale']
+            if "nerf_scale" in kwargs:
+                kwargs["scale"] = kwargs["nerf_scale"]
             self._add_common(name, **kwargs)
             self.fields[name] = "volume"
             for k in tree_data:
                 self.fields[_f(name, k)] = tree_data[k]
 
-
-    def write(self, path : str, compress : bool = True):
+    def write(self, path: str, compress: bool = True):
         """
         Write to drawlist npz which you can open with volrend
         (:code:`volrend --draw <output.npz>`;
@@ -1056,36 +1162,39 @@ class Scene:
 
         :param path: output npz path
         """
-        if not path.endswith('.draw.npz'):
-            warnings.warn('The filename does not end in .draw.npz, '
-                          'this will not work in web viewer')
+        if not path.endswith(".draw.npz"):
+            warnings.warn(
+                "The filename does not end in .draw.npz, "
+                "this will not work in web viewer"
+            )
         if self.fields:
             fields = self.fields
         else:
             # Make sure it is nonempty
-            fields = {"0" : 0}
+            fields = {"0": 0}
         if compress:
             np.savez_compressed(path, **fields)
         else:
             np.savez(path, **fields)
 
     def export(
-            self,
-            dirname : Optional[str] = None,
-            display : bool = False,
-            world_up : Optional[np.ndarray] = None,
-            cam_center : Optional[np.ndarray] = None,
-            cam_forward : Optional[np.ndarray] = None,
-            cam_origin : Optional[np.ndarray] = None,
-            compress: bool = True,
-            instructions : List[str] = [],
-            css : str = "",
-            url : str = 'localhost',
-            port : int = 8888,
-            open_browser : bool = False,
-            output_html_name : str = 'index.html',
-            embed_output : bool = False,
-            serve_nonblocking : bool = False) -> Tuple[str, str]:
+        self,
+        dirname: Optional[str] = None,
+        display: bool = False,
+        world_up: Optional[np.ndarray] = None,
+        cam_center: Optional[np.ndarray] = None,
+        cam_forward: Optional[np.ndarray] = None,
+        cam_origin: Optional[np.ndarray] = None,
+        compress: bool = True,
+        instructions: List[str] = [],
+        css: str = "",
+        url: str = "localhost",
+        port: int = 8888,
+        open_browser: bool = False,
+        output_html_name: str = "index.html",
+        embed_output: bool = False,
+        serve_nonblocking: bool = False,
+    ) -> Tuple[str, str]:
         """
         Write to a standalone web viewer
 
@@ -1117,7 +1226,9 @@ class Scene:
                  url
         """
         if dirname is None:
-            dirname = osp.join("nerfvis_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title))
+            dirname = osp.join(
+                "nerfvis_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title)
+            )
         os.makedirs(dirname, exist_ok=True)
 
         if world_up is not None:
@@ -1149,23 +1260,37 @@ class Scene:
         all_instructions.extend(instructions)
         # Use lower PlenOctree render quality
         # (ugly hack, executes javascript in the browser like this)
-        all_instructions.extend(["let opt = Volrend.get_options()",
+        all_instructions.extend(
+            [
+                "let opt = Volrend.get_options()",
                 "opt.step_size = 2e-3",
                 "opt.stop_thresh = 1e-1",
                 "opt.sigma_thresh = 1e-1",
-                "Volrend.set_options(opt)"])
+                "Volrend.set_options(opt)",
+            ]
+        )
         out_npz_fname = f"volrend.draw.npz"
         all_instructions.append(f'Volrend.set_title("{self.title}")')
         if world_up is not None:
-            all_instructions.append('Volrend.set_world_up(' + _format_vec3(world_up) + ')')
+            all_instructions.append(
+                "Volrend.set_world_up(" + _format_vec3(world_up) + ")"
+            )
         if cam_center is not None:
-            all_instructions.append('Volrend.set_cam_center(' + _format_vec3(cam_center) + ')')
+            all_instructions.append(
+                "Volrend.set_cam_center(" + _format_vec3(cam_center) + ")"
+            )
         if cam_forward is not None:
             cam_forward = _to_np_array(cam_forward)
-            all_instructions.append('Volrend.set_cam_back(' + _format_vec3(-cam_forward) + ')')
+            all_instructions.append(
+                "Volrend.set_cam_back(" + _format_vec3(-cam_forward) + ")"
+            )
         if cam_origin is not None:
-            all_instructions.append('Volrend.set_cam_origin(' + _format_vec3(cam_origin) + ')')
-        index_html_src_path = osp.join(osp.dirname(osp.realpath(__file__)), "index.html")
+            all_instructions.append(
+                "Volrend.set_cam_origin(" + _format_vec3(cam_origin) + ")"
+            )
+        index_html_src_path = osp.join(
+            osp.dirname(osp.realpath(__file__)), "index.html"
+        )
         index_html_path = osp.join(dirname, output_html_name)
         if osp.isfile(index_html_path):
             os.unlink(index_html_path)
@@ -1175,11 +1300,15 @@ class Scene:
 
         if embed_output:
             # Embed the output as a blob URL
-            with open(out_npz_path, 'rb') as f:
+            with open(out_npz_path, "rb") as f:
                 npz_bytes = f.read()
-                base64_npz = base64.b64encode(npz_bytes).decode('utf-8')
-                all_instructions.append('let blob_url = await fetch("data: \'application/octet-stream\';base64,' + base64_npz + '").then(res => res.blob()).then(URL.createObjectURL);')
-                all_instructions.append('Volrend.load_remote(blob_url)')
+                base64_npz = base64.b64encode(npz_bytes).decode("utf-8")
+                all_instructions.append(
+                    "let blob_url = await fetch(\"data: 'application/octet-stream';base64,"
+                    + base64_npz
+                    + '").then(res => res.blob()).then(URL.createObjectURL);'
+                )
+                all_instructions.append("Volrend.load_remote(blob_url)")
             os.unlink(out_npz_path)
         else:
             all_instructions.append(f'Volrend.load_remote("{out_npz_fname}")')
@@ -1190,27 +1319,35 @@ class Scene:
         bodyspl = html.split("</body>")
         assert len(bodyspl) == 2, "Malformed html"
 
-        JS_INJECT = \
-"""
+        JS_INJECT = """
 <script>
 window.addEventListener("volrend_ready", async function() {
     {{instructions}};
 });
 </script>
-""".replace("{{instructions}}", ";\n".join(all_instructions))
+""".replace(
+            "{{instructions}}", ";\n".join(all_instructions)
+        )
 
         html = bodyspl[0] + JS_INJECT + "</body>" + bodyspl[1]
 
         if css:
             stylespl = html.split("</style>")
             assert len(bodyspl) >= 2, "Malformed html"
-            html = stylespl[0] + "\n" + css + "\n</style>" + "</style>".join(stylespl[1:])
+            html = (
+                stylespl[0]
+                + "\n"
+                + css
+                + "\n</style>"
+                + "</style>".join(stylespl[1:])
+            )
         with open(index_html_path, "w") as f:
             f.write(html)
 
-        final_url = ''
+        final_url = ""
         if display:
             from http.server import HTTPServer, SimpleHTTPRequestHandler
+
             class LocalHandler(SimpleHTTPRequestHandler):
                 def __init__(self, *args, **kwargs):
                     super().__init__(*args, directory=dirname, **kwargs)
@@ -1228,8 +1365,8 @@ window.addEventListener("volrend_ready", async function() {
             server = None
             for port_i in range(port, port + 32):
                 try:
-                    server = HTTPServer(('', port_i), LocalHandler)
-                    print(f'Serving {url}:{port_i}')
+                    server = HTTPServer(("", port_i), LocalHandler)
+                    print(f"Serving {url}:{port_i}")
                     port = port_i
                     break
                 except OSError:
@@ -1237,18 +1374,22 @@ window.addEventListener("volrend_ready", async function() {
                     pass
             assert server is not None, f"Could not find open port near {port}"
 
-            final_url = f'http://{url}:{port}'
+            final_url = f"http://{url}:{port}"
             if open_browser:
                 import webbrowser
+
                 def open_webbrowser():
                     if not webbrowser.open_new(final_url):
-                        print('Could not open web browser',
-                              '(note: server still launched, '
-                              'please just open given port manually, using port forarding)')
-                t=threading.Thread(target=open_webbrowser)
+                        print(
+                            "Could not open web browser",
+                            "(note: server still launched, "
+                            "please just open given port manually, using port forarding)",
+                        )
+
+                t = threading.Thread(target=open_webbrowser)
                 t.start()
             if serve_nonblocking:
-                t_serve=threading.Thread(target=server.serve_forever)
+                t_serve = threading.Thread(target=server.serve_forever)
                 t_serve.start()
                 _servers.append(server)
                 _server_thds.append(t_serve)
@@ -1256,7 +1397,7 @@ window.addEventListener("volrend_ready", async function() {
                 try:
                     server.serve_forever()
                 except KeyboardInterrupt:
-                    print('nervfvis-server interrupted')
+                    print("nervfvis-server interrupted")
         return dirname, final_url
 
     def display(self, *args, **kwargs) -> Tuple[str, str]:
@@ -1284,10 +1425,7 @@ window.addEventListener("volrend_ready", async function() {
         """
         return self.export(*args, display=True, **kwargs)
 
-    def embed(self,
-              width: int = 1100,
-              height: int = 600,
-              *args, **kwargs):
+    def embed(self, width: int = 1100, height: int = 600, *args, **kwargs):
         """
         Calls :code:`Scene.export` but in addition embeds inside a notebook.
 
@@ -1316,22 +1454,34 @@ window.addEventListener("volrend_ready", async function() {
         :return: dirname, if it was not provided, returns the generated folder name;
                  url
         """
-        from IPython.display import display, IFrame, HTML  # Requires IPython
-        import random, string
-        JUPYTER_ROOT = os.readlink('/proc/%s/cwd' % os.environ['JPY_PARENT_PID'])
-        dirname_rel = osp.join("nerfvis_ipy_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title))
+        import random
+        import string
+
+        from IPython.display import HTML, IFrame, display  # Requires IPython
+
+        JUPYTER_ROOT = os.readlink(
+            "/proc/%s/cwd" % os.environ["JPY_PARENT_PID"]
+        )
+        dirname_rel = osp.join(
+            "nerfvis_ipy_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title)
+        )
         dirname = osp.join(JUPYTER_ROOT, dirname_rel)
-        randstr = ''.join(
-                random.choice(string.ascii_uppercase + string.digits) for _ in range(10))
+        randstr = "".join(
+            random.choice(string.ascii_uppercase + string.digits)
+            for _ in range(10)
+        )
         embed_name = "ipython_embed_" + randstr + ".html"
         #  css_inject = "#main-wrapper {max-height:101vh}"
         self.export(
-                dirname,
-                *args, display=False, open_browser=False,
-                #  css=css_inject,
-                serve_nonblocking=False, embed_output=True,
-                                 output_html_name=embed_name,
-                                 **kwargs)
+            dirname,
+            *args,
+            display=False,
+            open_browser=False,
+            #  css=css_inject,
+            serve_nonblocking=False,
+            embed_output=True,
+            output_html_name=embed_name,
+            **kwargs,
+        )
         html_file = os.path.join(dirname_rel, embed_name)
         display(IFrame(html_file, width, height))
-

@@ -1,0 +1,85 @@
+nerf_pl/
+nerfvis_scenes/
+
+# Direnv stuffs #
+.direnv
+.envrc
+
+# Compiled source #
+build/
+.cache/
+*.class
+*.dll
+*.exe
+*.o
+*.so
+*.pyc
+**/__pycache__/
+
+# Packages #
+# It's better to unpack these files and commit the raw source because
+# git has its own built in compression methods.
+*.7z
+*.jar
+*.rar
+*.zip
+*.gz
+*.bzip
+*.xz
+*.lzma
+
+# packing-only formats
+*.iso
+*.tar
+
+# package management formats
+*.dmg
+*.xpi
+*.gem
+*.egg
+*.egg-info
+*.deb
+*.rpm
+
+# Logs and databases #
+*.log
+*.sqlite
+
+# OS generated files #
+.DS_Store
+.Spotlight-V100
+.Trashes
+._*
+
+# Linux
+.fuse_hidden*
+.nfs*
+
+# Windows image file caches
+Thumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Vim
+.*.s[a-w][a-z]
+
+# IDE stuffs
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+.ipynb_checkpoints/
+
+# Tex
+*.aux
+*.bbl
+*.blg
+*.brf
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.pdf
+*.synctex.gz

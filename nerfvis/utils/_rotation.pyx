@@ -1,13 +1,17 @@
 # Taken from scipy
 import re
 import warnings
+
 import numpy as np
 
 cimport numpy as np
+from numpy.math cimport NAN
+from numpy.math cimport PI as pi  # avoid MSVC error
+from numpy.math cimport isnan
+
 cimport cython
 from cython.view cimport array
-from libc.math cimport sqrt, sin, cos, atan2, acos
-from numpy.math cimport PI as pi, NAN, isnan # avoid MSVC error
+from libc.math cimport acos, atan2, cos, sin, sqrt
 
 np.import_array()
 
