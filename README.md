@@ -84,13 +84,13 @@ scene.add_volume_from_npz('Lego', "lego.npz", scale=1.0)
 scene.display() # or embed(), etc
 ```
 
-### Visualizing COLMAP data
+### Visualizing SfM data
 
 Given:
 - camera-to-world poses `c2w` in OpenCV convention `(n_images, 4, 4)`
   (also easy to use OpenGL convention: use z=-1 and opengl=True below)
 - focal length, image size
-- COLMAP point cloud `(n_points, 3)` (optional), optionally with errors `(n_points,)`
+- SfM point cloud `(n_points, 3)` (optional), optionally with errors `(n_points,)`
 - Images `(n_images, h, w)`
 
 Note that OpenCV poses are now preferrred,
@@ -138,6 +138,13 @@ Example outputs (not quite the same code):
 http://alexyu.net/nerfvis_examples/basic_scene_with_volume/
 http://alexyu.net/nerfvis_examples/bicycle_vis/
 Data from Mip-NeRF 360 (Barron et al. CVPR 2022)
+
+### Time slider
+
+Nerfvis has a time slider feature (top of the left sidebar).
+All `add_*` functions support a `time=<int>` kwarg which is default to `-1` (visible at all times).
+You can set it to another number to enable the time slider and only show the object when it is set to that time.
+The time slider will be automatically updated to be between 0 and the max time amont all objects.
 
 ### Visualizing NeRF directly through svox
 

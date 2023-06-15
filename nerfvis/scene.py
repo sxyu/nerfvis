@@ -144,37 +144,53 @@ class Scene:
         self.bb_max = np.array([-inf, -inf, -inf])
         self.default_opencv = False
 
-    def _add_common(self, name, **kwargs):
+    def _add_common(self, name, kwargs):
         assert isinstance(name, str), "Name must be a string"
         if "time" in kwargs:
             self.fields[_f(name, "time")] = _to_np_array(kwargs["time"]).astype(
                 np.uint32
             )
+            del kwargs["time"]
         if "color" in kwargs:
             self.fields[_f(name, "color")] = _to_np_array(kwargs["color"]).astype(
                 np.float32
             )
+            del kwargs["color"]
+        scale = translation = None
         if "scale" in kwargs:
             self.fields[_f(name, "scale")] = np.float32(kwargs["scale"])
+            scale = kwargs["scale"]
+            del kwargs["scale"]
         if "translation" in kwargs:
             self.fields[_f(name, "translation")] = np.array(
                 kwargs["translation"]
             ).astype(np.float32)
+            translation = kwargs["translation"]
+            del kwargs["translation"]
         if "rotation" in kwargs:
             self.fields[_f(name, "rotation")] = _to_np_array(kwargs["rotation"]).astype(
                 np.float32
             )
+            del kwargs["rotation"]
         if "visible" in kwargs:
             self.fields[_f(name, "visible")] = int(kwargs["visible"])
+            del kwargs["visible"]
         if "unlit" in kwargs:
             self.fields[_f(name, "unlit")] = int(kwargs["unlit"])
+            del kwargs["unlit"]
         if "vert_color" in kwargs:
             vc = _to_np_array(kwargs["vert_color"])
             if vc.dtype != np.uint8:
                 vc = (vc * 255).astype(np.uint8)
             self.fields[_f(name, "vert_color")] = vc
+            del kwargs["vert_color"]
+        return scale, translation
 
-    def _update_bb(self, points, **kwargs):
+    def _check_args_used(self, name, kwargs):
+        if len(kwargs):
+            print(f"WARNING: Unused kwargs for {name}: {list(kwargs.keys())}, typo?")
+
+    def _update_bb(self, points, scale = None, translation = None):
         # FIXME handle rotation
 
         if points.ndim == 2:
@@ -183,13 +199,13 @@ class Scene:
         else:
             min_xyz = max_xyz = points
 
-        if "scale" in kwargs:
-            scale = np.float32(kwargs["scale"])
+        if scale is not None:
+            scale = np.float32(scale)
             min_xyz = min_xyz * scale
             max_xyz = max_xyz * scale
 
-        if "translation" in kwargs:
-            transl = _to_np_array(kwargs["translation"]).astype(np.float32)
+        if translation is not None:
+            transl = _to_np_array(translation).astype(np.float32)
             min_xyz = min_xyz + transl
             max_xyz = max_xyz + transl
 
@@ -211,12 +227,13 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         self.fields[name] = "cube"
         p1 = np.array([-0.5, -0.5, -0.5])
         p2 = np.array([0.5, 0.5, 0.5])
-        self._update_bb(p1, **kwargs)
-        self._update_bb(p2, **kwargs)
+        self._update_bb(p1, *_st)
+        self._update_bb(p2, *_st)
+        self._check_args_used(name, kwargs)
 
     def set_world_up(self, world_up: np.ndarray):
         """
@@ -253,10 +270,6 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
-        p1 = np.array([-0.5, -0.5, -0.5])
-        p2 = np.array([0.5, 0.5, 0.5])
-        self._update_bb(p1, **kwargs)
-        self._update_bb(p2, **kwargs)
         verts, segs = [], []
         for i in range(8):
             x = ((i >> 2) & 1) * 2 - 1
@@ -301,7 +314,7 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         self.fields[name] = "sphere"
         if rings is not None:
             self.fields[_f(name, "rings")] = int(rings)
@@ -309,8 +322,9 @@ class Scene:
             self.fields[_f(name, "sectors")] = int(sectors)
         p1 = np.array([-1.0, -1.0, -1.0])
         p2 = np.array([1.0, 1.0, 1.0])
-        self._update_bb(p1, **kwargs)
-        self._update_bb(p2, **kwargs)
+        self._update_bb(p1, *_st)
+        self._update_bb(p2, *_st)
+        self._check_args_used(name, kwargs)
 
     def add_line(self, name: str, a: np.ndarray, b: np.ndarray, **kwargs):
         """
@@ -330,14 +344,15 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         self.fields[name] = "line"
         a = _to_np_array(a)
         b = _to_np_array(b)
         self.fields[_f(name, "a")] = a.astype(np.float32)
         self.fields[_f(name, "b")] = b.astype(np.float32)
-        self._update_bb(a, **kwargs)
-        self._update_bb(b, **kwargs)
+        self._update_bb(a, *_st)
+        self._update_bb(b, *_st)
+        self._check_args_used(name, kwargs)
 
     def add_lines(
         self,
@@ -364,13 +379,14 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
                     (common param)
         """
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         points = _to_np_array(points)
         self.fields[name] = "lines"
         self.fields[_f(name, "points")] = points.astype(np.float32)
         if segs is not None:
             self.fields[_f(name, "segs")] = _to_np_array(segs).astype(np.int32)
-        self._update_bb(points, **kwargs)
+        self._update_bb(points, *_st)
+        self._check_args_used(name, kwargs)
 
     def add_points(
         self, name: str, points: np.ndarray, point_size: float = 1.0, **kwargs
@@ -393,13 +409,14 @@ class Scene:
                     (common param)
         """
         assert points.ndim == 2 and points.shape[1] == 3, "points must be (N, 3)"
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         points = _to_np_array(points)
         self.fields[name] = "points"
         self.fields[_f(name, "points")] = points.astype(np.float32)
         if point_size != 1.0:
             self.fields[_f(name, "point_size")] = np.float32(point_size)
-        self._update_bb(points, **kwargs)
+        self._update_bb(points, *_st)
+        self._check_args_used(name, kwargs)
 
     def add_mesh(
         self,
@@ -433,7 +450,7 @@ class Scene:
                     (common param)
         """
         assert points.ndim == 2 and points.shape[1] == 3, "points must be (N, 3)"
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         points = _to_np_array(points)
         self.fields[name] = "mesh"
         self.fields[_f(name, "points")] = points.astype(np.float32)
@@ -445,7 +462,8 @@ class Scene:
                 face_size is None or faces.shape[1] == face_size
             ), f"faces must be (N, face_size={face_size if face_size is not None else -1})"
             self.fields[_f(name, "faces")] = _to_np_array(faces).astype(np.int32)
-        self._update_bb(points, **kwargs)
+        self._update_bb(points, *_st)
+        self._check_args_used(name, kwargs)
 
     def add_image(
         self,
@@ -544,6 +562,7 @@ class Scene:
             unlit=True,
             **kwargs,
         )
+        self._check_args_used(name, kwargs)
 
     def add_camera_frustum(
         self,
@@ -590,7 +609,7 @@ class Scene:
         :param update_view: bool, if true then updates the camera position, scene origin etc
                             using these cameras
         """
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         self.fields[name] = "camerafrustum"
         if focal_length is not None:
             self.fields[_f(name, "focal_length")] = np.float32(focal_length)
@@ -650,7 +669,8 @@ class Scene:
             self.fields[_f(name, "z")] = np.float32(mind * 0.6)
 
         if t is not None:
-            self._update_bb(t, **kwargs)
+            self._update_bb(t, *_st)
+        self._check_args_used(name, kwargs)
 
     def add_mesh_from_file(
         self, path: str, name_suffix: str = "", center: bool = False, **kwargs
@@ -682,7 +702,6 @@ class Scene:
             faces=mesh.faces,
             **kwargs,
         )
-        self._update_bb(verts, **kwargs)
 
     def add_axes(self, name: str = "axes", length: float = 1.0, **kwargs):
         """
@@ -730,7 +749,6 @@ class Scene:
             ),
             **kwargs,
         )
-        self._update_bb(points, **kwargs)
 
     def remove(self, name: str):
         """
@@ -806,12 +824,13 @@ class Scene:
             density_threshold=density_threshold,
             data_format=data_format,
         )
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         self.fields[name] = "volume"
         for k in tree_data:
             self.fields[_f(name, k)] = tree_data[k]
-        self._update_bb(np.array([-radius, -radius, -radius]), **kwargs)
-        self._update_bb(np.array([radius, radius, radius]), **kwargs)
+        self._update_bb(np.array([-radius, -radius, -radius]), *_st)
+        self._update_bb(np.array([radius, radius, radius]), *_st)
+        self._check_args_used(name, kwargs)
 
     def add_volume_from_npz(self, name: str, file: str, **kwargs):
         """
@@ -828,15 +847,16 @@ class Scene:
                     (common param)
         """
         tree_data = dict(np.load(file))
-        self._add_common(name, **kwargs)
+        _st = self._add_common(name, kwargs)
         self.fields[name] = "volume"
         for k in tree_data:
             self.fields[_f(name, k)] = tree_data[k]
         radius = 0.5 / tree_data.get("invradius3", tree_data.get("invradius", None))
         if isinstance(radius, float):
             radius = np.array([radius] * 3, dtype=np.float32)
-        self._update_bb(-radius, **kwargs)
-        self._update_bb(radius, **kwargs)
+        self._update_bb(-radius, *_st)
+        self._update_bb(radius, *_st)
+        self._check_args_used(name, kwargs)
 
     def set_nerf(self, *args, **kwargs):
         """
@@ -936,8 +956,6 @@ class Scene:
         if isinstance(radius, list) or isinstance(radius, tuple):
             radius = np.array(radius)
         radius *= scale
-        self._update_bb(center - radius)
-        self._update_bb(center + radius)
         print("* Discretizing NeRF (requires torch, tqdm, svox, scipy)")
 
         if r is not None and t is not None:
@@ -1131,10 +1149,14 @@ class Scene:
             }
             if "nerf_scale" in kwargs:
                 kwargs["scale"] = kwargs["nerf_scale"]
-            self._add_common(name, **kwargs)
+                del kwargs["nerf_scale"]
+            _st = self._add_common(name, kwargs)
+            self._update_bb(center - radius, *_st)
+            self._update_bb(center + radius, *_st)
             self.fields[name] = "volume"
             for k in tree_data:
                 self.fields[_f(name, k)] = tree_data[k]
+            self._check_args_used(name, kwargs)
 
     def write(self, path: str, compress: bool = True):
         """
