@@ -101,9 +101,7 @@ def vol2plenoctree(
         "SH9": 28,
         "SH16": 49,
     }
-    assert (
-        data_format in valid_data_formats
-    ), f"Invalid ddata format {data_format}"
+    assert data_format in valid_data_formats, f"Invalid ddata format {data_format}"
     data_dim = valid_data_formats[data_format]
 
     # Check if given shape matches promised format
@@ -181,9 +179,7 @@ def vol2plenoctree(
                 .reshape(-1, 2, 2, 2, 1)[mask.flatten()]
                 .astype(np.float16)
             )
-            colors_i = np.empty(
-                (nnodes, 2, 2, 2, data_dim - 1), dtype=np.float16
-            )
+            colors_i = np.empty((nnodes, 2, 2, 2, data_dim - 1), dtype=np.float16)
             colors_i[mask_indices] = (
                 colors.reshape(pow2, 2, pow2, 2, pow2, 2, data_dim - 1)
                 .transpose(0, 2, 4, 1, 3, 5, 6)
@@ -209,9 +205,7 @@ def vol2plenoctree(
             child = child.reshape(pow2 * 2, pow2 * 2, pow2 * 2)
             child[~next_mask] = 0
             child = child.reshape(pow2, 2, pow2, 2, pow2, 2)
-            child = child.transpose(0, 2, 4, 1, 3, 5).reshape(
-                pow2**3, 2, 2, 2
-            )
+            child = child.transpose(0, 2, 4, 1, 3, 5).reshape(pow2**3, 2, 2, 2)
 
             child_tmp = np.empty((nnodes, 2, 2, 2), dtype=np.uint32)
             child_tmp[curr_indices[mask.reshape(-1)]] = child[mask.reshape(-1)]

@@ -31,9 +31,7 @@ def _scipy_rotation_from_auto(rot: np.ndarray):
     elif rot.shape[-1] == 4:
         q = utils.Rotation.from_quat(rot)
     elif rot.shape[-1] == 9:
-        q = utils.Rotation.from_matrix(
-            rot.reshape(list(rot.shape[:-1]) + [3, 3])
-        )
+        q = utils.Rotation.from_matrix(rot.reshape(list(rot.shape[:-1]) + [3, 3]))
     else:
         raise NotImplementedError
     return q
@@ -62,9 +60,7 @@ def _angle_axis_rotate_vector_np(r: np.ndarray, v: np.ndarray):
         perp = np.cross(np.broadcast_to(axis, v_good.shape), v_good)
         dot = np.sum(axis * v_good, axis=-1, keepdims=True)
         result[good_mask_v] = (
-            v_good * cos_theta
-            + perp * sin_theta
-            + axis * (dot * (1 - cos_theta))
+            v_good * cos_theta + perp * sin_theta + axis * (dot * (1 - cos_theta))
         )
     if v_bad.size:
         # From Ceres
@@ -99,9 +95,9 @@ def _rotate_vector_np(rot: np.ndarray, pt: np.ndarray):
     elif rot.shape[-1] == 4:
         return _quaternion_rotate_vector_np(rot, pt)
     elif rot.shape[-1] == 9:
-        return np.matmul(
-            rot.reshape(list(rot.shape[:-1]) + [3, 3]), pt[..., None]
-        )[..., 0]
+        return np.matmul(rot.reshape(list(rot.shape[:-1]) + [3, 3]), pt[..., None])[
+            ..., 0
+        ]
     else:
         raise NotImplementedError
 
@@ -150,13 +146,13 @@ class Scene:
     def _add_common(self, name, **kwargs):
         assert isinstance(name, str), "Name must be a string"
         if "time" in kwargs:
-            self.fields[_f(name, "time")] = _to_np_array(
-                kwargs["time"]
-            ).astype(np.uint32)
+            self.fields[_f(name, "time")] = _to_np_array(kwargs["time"]).astype(
+                np.uint32
+            )
         if "color" in kwargs:
-            self.fields[_f(name, "color")] = _to_np_array(
-                kwargs["color"]
-            ).astype(np.float32)
+            self.fields[_f(name, "color")] = _to_np_array(kwargs["color"]).astype(
+                np.float32
+            )
         if "scale" in kwargs:
             self.fields[_f(name, "scale")] = np.float32(kwargs["scale"])
         if "translation" in kwargs:
@@ -164,9 +160,9 @@ class Scene:
                 kwargs["translation"]
             ).astype(np.float32)
         if "rotation" in kwargs:
-            self.fields[_f(name, "rotation")] = _to_np_array(
-                kwargs["rotation"]
-            ).astype(np.float32)
+            self.fields[_f(name, "rotation")] = _to_np_array(kwargs["rotation"]).astype(
+                np.float32
+            )
         if "visible" in kwargs:
             self.fields[_f(name, "visible")] = int(kwargs["visible"])
         if "unlit" in kwargs:
@@ -444,21 +440,24 @@ class Scene:
             self.fields[_f(name, "face_size")] = int(face_size)
             assert face_size >= 1 and face_size <= 3
         if faces is not None:
-            assert faces.ndim == 2 and (face_size is None or faces.shape[1] == face_size), \
-                    f"faces must be (N, face_size={face_size if face_size is not None else -1})"
+            assert faces.ndim == 2 and (
+                face_size is None or faces.shape[1] == face_size
+            ), f"faces must be (N, face_size={face_size if face_size is not None else -1})"
             self.fields[_f(name, "faces")] = _to_np_array(faces).astype(np.int32)
         self._update_bb(points, **kwargs)
 
-    def add_image(self,
-                  name : str,
-                  image : Union[str, np.ndarray],
-                  r: np.ndarray,
-                  t: np.ndarray,
-                  focal_length : float = 1111.11,
-                  z: float = -0.1,
-                  image_size : int = 64,
-                  opengl: Optional[bool] = None,
-                  **kwargs):
+    def add_image(
+        self,
+        name: str,
+        image: Union[str, np.ndarray],
+        r: np.ndarray,
+        t: np.ndarray,
+        focal_length: float = 1111.11,
+        z: float = -0.1,
+        image_size: int = 64,
+        opengl: Optional[bool] = None,
+        **kwargs,
+    ):
         """
         Add an image (as plane mesh with vertex colors)
 
@@ -514,9 +513,7 @@ class Scene:
         if opengl:
             grid[..., 1] *= -1.0
 
-        faces = np.empty(
-            ((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32
-        )
+        faces = np.empty(((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32)
         arrx = np.arange((image_size - 1))
         arry = np.arange((vis_h - 1)) * image_size
         arr = (arry[:, None] + arrx[None]).flatten()
@@ -544,7 +541,7 @@ class Scene:
             face_size=3,
             vert_color=im.reshape(-1, 3).astype(np.float32) / 255.0,
             unlit=True,
-            **kwargs
+            **kwargs,
         )
 
     def add_camera_frustum(
@@ -671,9 +668,7 @@ class Scene:
         import trimesh  # pip install trimesh
 
         mesh: trimesh.Trimesh = trimesh.load(path, force="mesh")
-        if hasattr(mesh.visual, "vertex_colors") and len(
-            mesh.visual.vertex_colors
-        ):
+        if hasattr(mesh.visual, "vertex_colors") and len(mesh.visual.vertex_colors):
             kwargs["vert_color"] = (
                 mesh.visual.vertex_colors[..., :3].astype(np.float32) / 255.0
             )
@@ -836,9 +831,7 @@ class Scene:
         self.fields[name] = "volume"
         for k in tree_data:
             self.fields[_f(name, k)] = tree_data[k]
-        radius = 0.5 / tree_data.get(
-            "invradius3", tree_data.get("invradius", None)
-        )
+        radius = 0.5 / tree_data.get("invradius3", tree_data.get("invradius", None))
         if isinstance(radius, float):
             radius = np.array([radius] * 3, dtype=np.float32)
         self._update_bb(-radius, **kwargs)
@@ -976,9 +969,7 @@ class Scene:
             sh_dim = (sh_deg + 1) ** 2
             data_format = f"SH{sh_dim}" if use_dirs else "RGBA"
             init_grid_depth = reso.bit_length() - 2
-            assert (
-                2 ** (init_grid_depth + 1) == reso
-            ), "Grid size must be a power of 2"
+            assert 2 ** (init_grid_depth + 1) == reso, "Grid size must be a power of 2"
             tree = N3Tree(
                 N=2,
                 init_refine=0,
@@ -999,9 +990,7 @@ class Scene:
             yy = (arr - offset[1]) / scale[1]
             zz = (arr - offset[2]) / scale[2]
             grid = (
-                torch.stack(torch.meshgrid(xx, yy, zz, indexing="ij"))
-                .reshape(3, -1)
-                .T
+                torch.stack(torch.meshgrid(xx, yy, zz, indexing="ij")).reshape(3, -1).T
             )
 
             print("  Evaluating NeRF on a grid")
@@ -1016,9 +1005,7 @@ class Scene:
                 if use_dirs:
 
                     def _spherical_func(viewdirs):
-                        raw_rgb, sigma = eval_fn(
-                            grid_chunk[:, None], dirs=viewdirs
-                        )
+                        raw_rgb, sigma = eval_fn(grid_chunk[:, None], dirs=viewdirs)
                         return raw_rgb, sigma
 
                     rgb, sigma = project_fun(
@@ -1031,9 +1018,7 @@ class Scene:
                     rgb, sigma = eval_fn(grid_chunk)
                     if rgb.shape[-1] == 1:
                         rgb = rgb.expand(-1, 3)  # Grayscale
-                    elif (
-                        rgb.shape[-1] != 3 and str(tree.data_format) == "RGBA"
-                    ):
+                    elif rgb.shape[-1] != 3 and str(tree.data_format) == "RGBA":
                         tree.expand(f"SH{rgb.shape[-1] // 3}")
 
                 rgb_sigma = torch.cat([rgb, sigma], dim=-1)
@@ -1335,11 +1320,7 @@ window.addEventListener("volrend_ready", async function() {
             stylespl = html.split("</style>")
             assert len(bodyspl) >= 2, "Malformed html"
             html = (
-                stylespl[0]
-                + "\n"
-                + css
-                + "\n</style>"
-                + "</style>".join(stylespl[1:])
+                stylespl[0] + "\n" + css + "\n</style>" + "</style>".join(stylespl[1:])
             )
         with open(index_html_path, "w") as f:
             f.write(html)
@@ -1459,16 +1440,13 @@ window.addEventListener("volrend_ready", async function() {
 
         from IPython.display import HTML, IFrame, display  # Requires IPython
 
-        JUPYTER_ROOT = os.readlink(
-            "/proc/%s/cwd" % os.environ["JPY_PARENT_PID"]
-        )
+        JUPYTER_ROOT = os.readlink("/proc/%s/cwd" % os.environ["JPY_PARENT_PID"])
         dirname_rel = osp.join(
             "nerfvis_ipy_scenes", re.sub("[^0-9a-zA-Z_]", "", self.title)
         )
         dirname = osp.join(JUPYTER_ROOT, dirname_rel)
         randstr = "".join(
-            random.choice(string.ascii_uppercase + string.digits)
-            for _ in range(10)
+            random.choice(string.ascii_uppercase + string.digits) for _ in range(10)
         )
         embed_name = "ipython_embed_" + randstr + ".html"
         #  css_inject = "#main-wrapper {max-height:101vh}"

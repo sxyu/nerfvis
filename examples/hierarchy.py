@@ -16,7 +16,5 @@ density = 1.0 / (
     )
 )
 color = np.full(list(density.shape) + [3], fill_value=0.5, dtype=np.float32)
-scene.add_volume(
-    "My volume", density, color, scale=2.0, translation=[-2, 0, 0]
-)
+scene.add_volume("My volume", density, color, scale=2.0, translation=[-2, 0, 0])
 scene.display(port=6006)
