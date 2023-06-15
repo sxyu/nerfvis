@@ -40,9 +40,9 @@ Tips:
 
 - A list of all objects with the names you gave them will be displayed in a tree view on the left side of the screen, where you can toggle them. F-strings are recommended for automatically generating object names
 - Use "/" inside names for example `image/0` to create nested trees.
-- For convenience, we accept numpy arrays, torch Tensors, and lists in general for any arguments marked at `np.ndarray`  (by default torch is not imported to avoid having it as a dependency). 
+- For convenience, we accept numpy arrays, torch Tensors, and lists in general for any arguments marked at `np.ndarray`  (by default torch is not imported to avoid having it as a dependency).
 - The initial camera pose will be automatically determined. Pass `center=[x, y, z]` (camera position) ,
-    `origin=[x,y,z]` (camera target), `forward=[x,y,z]` (forward vector), `world_up=[x,y,z]` (world space up vector) to display() or export() or embed() to manually set an initial pose. 
+    `origin=[x,y,z]` (camera target), `forward=[x,y,z]` (forward vector), `world_up=[x,y,z]` (world space up vector) to display() or export() or embed() to manually set an initial pose.
     A convenience function `scene.set_opencv()` is given to set the world up axis to `-y` (this also changes the default behavior of `add_image`).
 - Use `scene.export("path")` to manually generate a directory you can open in the browser or upload somewhere
 
@@ -98,10 +98,19 @@ although the original NeRF/PlenOctrees used OpenGL.
 
 ```python
 from nerfvis import scene
-# Set -y up world, and also flips the image
-scene.set_opencv() 
+import numpy as np
 
-# To show have errors
+# Set -y up world, and also flips the image
+scene.set_opencv()
+
+# Example data
+f = 1111.0
+images = np.random.rand(1, 800, 800, 3)
+c2ws = np.eye(4)[None]
+point_cloud = np.random.randn(10000, 3) * 0.1
+point_cloud_errs = np.random.rand(10000)
+
+# To show errors as colors
 colors = np.zeros_like(point_cloud)
 colors[:, 0] = point_cloud_errs / point_cloud_errs.max()
 scene.add_points("points", point_cloud, vert_color=colors)
@@ -109,16 +118,18 @@ scene.add_points("points", point_cloud, vert_color=colors)
 # scene.add_points("points", point_cloud, color=[0.0, 0.0, 0.0])
 scene.add_camera_frustum("cameras", r=c2ws[:, :3, :3], t=c2ws[:, :3, 3], focal_length=f,
                          image_width=images.shape[2], image_height=images.shape[1],
-                         z=0.1, connect=False, color=[1.0, 0.0, 0.0])
+                         z=0.5, connect=False, color=[1.0, 0.0, 0.0])
 
-for i in range(len(c2w)):
+for i in range(len(c2ws)):
     scene.add_image(
                   f"images/i",
-                  images[i],
+                  images[i], # Can be path too
                   r=c2ws[i, :3, :3], t=c2ws[i, :3, 3],
-                  focal_lenght=f,
-                  z=0.1,
-                  image_size)
+                  focal_length=f,
+                  z=0.5,
+                  # NOTE: this image size is the display image size not original imge size
+                  # (that will be taken from the image). Keep it low if you are adding many images
+                  image_size=64)
 scene.add_axes()
 scene.display()
 ```
@@ -158,7 +169,7 @@ right now. You may programmatically generate this. They will show up in the *lay
 Please also `pip install torch svox tqdm scipy` for adding NeRF (`set_nerf`)
 or `pip install trimesh` for using `add_mesh_from_file(path)`.
 
-To add cameras (also used for scaling scene, initializing camera etc), use 
+To add cameras (also used for scaling scene, initializing camera etc), use
 `add_camera_frustum(focal_length=.., image_width=.., image_height=.., z=..,  r=.., t=..)`
 
 ## Viewer Controls
