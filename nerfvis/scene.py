@@ -1336,6 +1336,7 @@ window.addEventListener("volrend_ready", async function() {
                         # Python < 3.7 legacy
                         assert dirname is not None
                         os.chdir(dirname)
+                        super().__init__(*args, **kwargs)
                     else:
                         super().__init__(*args, directory=dirname, **kwargs)
 
