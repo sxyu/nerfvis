@@ -110,7 +110,7 @@ c2ws = np.eye(4)[None]
 point_cloud = np.random.randn(10000, 3) * 0.1
 point_cloud_errs = np.random.rand(10000)
 
-# To show have errors
+# To show errors as colors
 colors = np.zeros_like(point_cloud)
 colors[:, 0] = point_cloud_errs / point_cloud_errs.max()
 scene.add_points("points", point_cloud, vert_color=colors)
