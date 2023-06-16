@@ -2,6 +2,7 @@
 NeRF + Drawing
 """
 import base64
+import io
 import os
 import os.path as osp
 import platform
@@ -104,6 +105,9 @@ def _rotate_vector_np(rot: np.ndarray, pt: np.ndarray):
 
 
 def _to_np_array(obj) -> np.ndarray:
+    """
+    Convert list-like and np array-like and torch tensors to numpy array
+    """
     if not isinstance(obj, np.ndarray):
         if hasattr(obj, "cpu"):
             obj = obj.cpu()
@@ -118,8 +122,32 @@ def _to_np_array(obj) -> np.ndarray:
     return np.ascontiguousarray(arr)
 
 
+def _standarize_rotation_to_rotvec(r: np.ndarray,
+                                   ref_t: Optional[np.ndarray] = None,
+                                   single_item: bool = False) -> np.ndarray:
+    """
+    Normalize all types of rotations to rotation vectors
+    """
+    r = _to_np_array(r)
+    if ref_t is not None:
+        ref_t = _to_np_array(ref_t)
+    if r.ndim == 1 or (r.ndim == 2 and (single_item or
+                      (ref_t is not None and ref_t.ndim == 1))):
+        # Make single rotation into a vector
+        # Special handlign for single (3, 3) ....
+        r = r[None]
+    if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
+        # Matrix
+        r = utils.Rotation.from_matrix(r).as_rotvec()
+    elif r.ndim == 2 and r.shape[1] == 4 and ref_t is not None:
+        # Quaternion
+        r = utils.Rotation.from_quat(r).as_rotvec()
+    r = r.astype(np.float32)
+    return r
+
+
 class Scene:
-    def __init__(self, title: str = "Scene"):
+    def __init__(self, title: str = "Scene", default_opencv: bool = True):
         """
         Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
         Add objects using :code:`add_*` as seen below, then use
@@ -142,7 +170,10 @@ class Scene:
         inf = float("inf")
         self.bb_min = np.array([inf, inf, inf])
         self.bb_max = np.array([-inf, -inf, -inf])
-        self.default_opencv = False
+        if default_opencv:
+            self.set_opencv()
+        else:
+            self.set_opengl()
 
     def _add_common(self, name, kwargs):
         assert isinstance(name, str), "Name must be a string"
@@ -161,17 +192,18 @@ class Scene:
             self.fields[_f(name, "scale")] = np.float32(kwargs["scale"])
             scale = kwargs["scale"]
             del kwargs["scale"]
+        if "rotation" in kwargs:
+            self.fields[_f(name, "rotation")] = _standarize_rotation_to_rotvec(
+                    kwargs["rotation"],
+                    kwargs.get("translation"),
+                    single_item=True)[0]
+            del kwargs["rotation"]
         if "translation" in kwargs:
             self.fields[_f(name, "translation")] = np.array(
                 kwargs["translation"]
             ).astype(np.float32)
             translation = kwargs["translation"]
             del kwargs["translation"]
-        if "rotation" in kwargs:
-            self.fields[_f(name, "rotation")] = _to_np_array(kwargs["rotation"]).astype(
-                np.float32
-            )
-            del kwargs["rotation"]
         if "visible" in kwargs:
             self.fields[_f(name, "visible")] = int(kwargs["visible"])
             del kwargs["visible"]
@@ -247,6 +279,13 @@ class Scene:
         """
         self.world_up = np.array([0.0, -1.0, 0.0])
         self.default_opencv = True
+
+    def set_opengl(self):
+        """
+        Use OpenGL world up ([0, 1, 0])
+        """
+        self.world_up = np.array([0.0, 1.0, 0.0])
+        self.default_opencv = False
 
     def set_title(self, title: str):
         """
@@ -465,6 +504,100 @@ class Scene:
         self._update_bb(points, *_st)
         self._check_args_used(name, kwargs)
 
+    def add_image_v2(
+        self,
+        name: str,
+        image: Union[str, np.ndarray],
+        r: Optional[np.ndarray] = None,
+        t: Optional[np.ndarray] = None,
+        focal_length: float = 1111.11,
+        z: float = 0.3,
+        max_image_size: int = 512,
+        jpeg_quality: int = 80,
+        **kwargs,
+    ):
+        """
+        Add an image (as a textured plane mesh, using JPEG compression)
+
+        :param name: an identifier for this object
+        :param path: path to the image
+        :param rotation: (3,) or (4,) or (3, 3)
+                  C2W rotations for each camera, either as axis-angle,
+                  xyzw quaternion, or rotation matrix
+                  (similar to "rotation")
+        :param translation: (3,)
+                  C2W translations for each camera applied after rotation
+        :param r: alias for rotation (overrides, for similarity with add_camera_frustum)
+        :param t: alias for translation (overrides, for similarity with add_camera_frustum)
+        :param z: the depth at which to draw the frustum far points.
+                  use negative values for OpenGL coordinates (original NeRF)
+                  or positive values for OpenCV coordinates (NSVF).
+                  If not given, tries to infer a good value. Else defaults to -0.3
+                  NOTE: kind of weirdly (but to be consistent
+                  with add_camera_frustum),for OpenGL, z needs to be negative,
+                  while for OpenCV it should be positive.
+        :param max_image_size: max size of image for display.
+                           This is NOT the size of the
+                           input image, but the size to be displayed!
+                           NOTE: do not make this too large to save memory
+        :param jpeg_quality: JPEG quality for compression (0-100)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
+        """
+        from PIL import Image  # pip install pillow
+
+        if isinstance(image, str):
+            im = Image.open(str(image))
+        else:
+            image = _to_np_array(image)
+            if image.dtype != np.uint8:
+                image = (image * 255).astype(dtype=np.uint8)
+            im = Image.fromarray(image)
+        if self.default_opencv != (z > 0):
+            print("z must be postive iff using OpenCV coordinates, flipping")
+            z = -z
+        if z < 0.0:
+            # Flip image
+            im = im.transpose(Image.FLIP_TOP_BOTTOM)
+        image_wh = im.size
+
+        if hasattr(Image, "Resampling"):
+            # Pillow 10
+            BOX = Image.Resampling.BOX
+        else:
+            BOX = Image.BOX
+        if max_image_size < image_wh[0]:
+            focal_vis = max_image_size / image_wh[0] * focal_length
+            vis_h = int(max_image_size * image_wh[1] / image_wh[0])
+            im = im.resize((max_image_size, vis_h), resample=BOX)
+        else:
+            focal_vis = focal_length
+
+        self.fields[name] = "image"
+        if focal_length is not None:
+            self.fields[_f(name, "focal_length")] = focal_vis
+        if focal_length is not None:
+            self.fields[_f(name, "z")] = z
+        # For similarity to add_camera_frustum
+        if r is not None:
+            kwargs["rotation"] = r
+        if t is not None:
+            kwargs["translation"] = t
+
+        # RGB
+        im = im.convert("RGB")
+        # Save as JPG in memory
+        bio = io.BytesIO()
+        im.save(bio, format="JPEG", quality=jpeg_quality)
+        im_bytes = bio.getvalue()
+        # To numpy
+        im_np = np.frombuffer(im_bytes, dtype=np.uint8)
+        self.fields[_f(name, "data")] = im_np
+
+        _st = self._add_common(name, kwargs)
+        self._update_bb(kwargs.get("translation", np.zeros(3)), *_st)
+        self._check_args_used(name, kwargs)
+
+
     def add_image(
         self,
         name: str,
@@ -472,7 +605,7 @@ class Scene:
         r: np.ndarray,
         t: np.ndarray,
         focal_length: float = 1111.11,
-        z: float = -0.1,
+        z: float = 0.3,
         image_size: int = 64,
         opengl: Optional[bool] = None,
         **kwargs,
@@ -501,6 +634,9 @@ class Scene:
                        was used.
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
         """
+        warnings.warn(
+            "nerfvis.scene.add_image is deprecated, please use the "
+            "much more efficient add_image_v2 instead")
         if opengl is None:
             opengl = not self.default_opencv
         from PIL import Image  # pip install pillow
@@ -570,7 +706,7 @@ class Scene:
         focal_length: Optional[float] = None,
         image_width: Optional[float] = None,
         image_height: Optional[float] = None,
-        z: Optional[float] = None,
+        z: float = 0.3,
         r: Optional[np.ndarray] = None,
         t: Optional[np.ndarray] = None,
         connect: bool = False,
@@ -587,7 +723,7 @@ class Scene:
         :param z: the depth at which to draw the frustum far points.
                   use negative values for OpenGL coordinates (original NeRF)
                   or positive values for OpenCV coordinates (NSVF).
-                  If not given, tries to infer a good value. Else defaults to -0.3
+                  If not given, tries to infer a good value.
         :param r: (N, 3) or (N, 4) or (N, 3, 3) or None, optional
                   C2W rotations for each camera, either as axis-angle,
                   xyzw quaternion, or rotation matrix; if not given, only one camera
@@ -622,18 +758,7 @@ class Scene:
 
         if r is not None:
             assert t is not None, "r,t should be both set or both unset"
-            r = _to_np_array(r)
-            if t is not None:
-                t = _to_np_array(t)
-            if r.ndim == 1 or (r.ndim == 2 and t is not None and t.ndim == 1):
-                r = r[None]
-            if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
-                # Matrix
-                r = utils.Rotation.from_matrix(r).as_rotvec()
-            elif r.ndim == 2 and r.shape[1] == 4 and t:
-                # Quaternion
-                r = utils.Rotation.from_quat(r).as_rotvec()
-            self.fields[_f(name, "r")] = r.astype(np.float32)
+            self.fields[_f(name, "r")] = _standarize_rotation_to_rotvec(r, ref_t=t)
         if t is not None:
             t = _to_np_array(t)
             assert r is not None, "r,t should be both set or both unset"
@@ -660,8 +785,12 @@ class Scene:
             self.world_up = world_up
             self.cam_forward = cam_forward
 
-        if z is not None:
-            self.fields[_f(name, "z")] = np.float32(z)
+        self.fields[_f(name, "z")] = np.float32(z)
+
+        if self.default_opencv != (z > 0):
+            print("z must be postive iff using OpenCV coordinates, flipping")
+            z = -z
+
         elif t is not None and len(t) > 1:
             t = _to_np_array(t)
             alld = np.linalg.norm(t - t[0], axis=-1)
