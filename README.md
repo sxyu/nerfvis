@@ -88,7 +88,7 @@ scene.display() # or embed(), etc
 
 Given:
 - camera-to-world poses `c2w` in OpenCV convention `(n_images, 4, 4)`
-  (also easy to use OpenGL convention: use z=-1 and opengl=True below)
+  (also easy to use OpenGL convention, it is default: just omit `set_opencv()`)
 - focal length, image size
 - SfM point cloud `(n_points, 3)` (optional), optionally with errors `(n_points,)`
 - Images `(n_images, h, w)`
@@ -100,8 +100,12 @@ although the original NeRF/PlenOctrees used OpenGL.
 from nerfvis import scene
 import numpy as np
 
-# Set -y up world, and also flips the image
+# Set -y up world (opencv coordinates)
 scene.set_opencv()
+
+# Alt set y up world (opengl coordinates)
+#scene.set_opengl() # Default
+
 
 # Example data
 f = 1111.0
@@ -124,12 +128,14 @@ for i in range(len(c2ws)):
     scene.add_image(
                   f"images/i",
                   images[i], # Can be path too
-                  r=c2ws[i, :3, :3], t=c2ws[i, :3, 3],
+                  r=c2ws[i, :3, :3],
+                  t=c2ws[i, :3, 3],
                   focal_length=f,
-                  z=0.5,
-                  # NOTE: this image size is the display image size not original imge size
-                  # (that will be taken from the image). Keep it low if you are adding many images
-                  image_size=64)
+                  z=0.5)
+    # r: c2w rotation (3, 3)
+    # t: c2w translation (3,)
+    # focal_length: focal length (in pixels, real image size as loaded will be used)
+    # z: distance along z to place the camera
 scene.add_axes()
 scene.display()
 ```

@@ -147,7 +147,7 @@ def _standarize_rotation_to_rotvec(r: np.ndarray,
 
 
 class Scene:
-    def __init__(self, title: str = "Scene", default_opencv: bool = True):
+    def __init__(self, title: str = "Scene", default_opencv: bool = False):
         """
         Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
         Add objects using :code:`add_*` as seen below, then use
@@ -220,7 +220,9 @@ class Scene:
 
     def _check_args_used(self, name, kwargs):
         if len(kwargs):
-            print(f"WARNING: Unused kwargs for {name}: {list(kwargs.keys())}, typo?")
+            msg = (f"WARNING: Unused kwargs for {name}: {list(kwargs.keys())}, "
+                          "might be a typo?")
+            warnings.warn(msg)
 
     def _update_bb(self, points, scale = None, translation = None):
         # FIXME handle rotation
@@ -504,7 +506,7 @@ class Scene:
         self._update_bb(points, *_st)
         self._check_args_used(name, kwargs)
 
-    def add_image_v2(
+    def add_image(
         self,
         name: str,
         image: Union[str, np.ndarray],
@@ -512,7 +514,7 @@ class Scene:
         t: Optional[np.ndarray] = None,
         focal_length: float = 1111.11,
         z: float = 0.3,
-        max_image_size: int = 512,
+        image_size: int = 512,
         jpeg_quality: int = 80,
         **kwargs,
     ):
@@ -536,7 +538,7 @@ class Scene:
                   NOTE: kind of weirdly (but to be consistent
                   with add_camera_frustum),for OpenGL, z needs to be negative,
                   while for OpenCV it should be positive.
-        :param max_image_size: max size of image for display.
+        :param image_size: max size of image for display.
                            This is NOT the size of the
                            input image, but the size to be displayed!
                            NOTE: do not make this too large to save memory
@@ -544,6 +546,8 @@ class Scene:
         :param time: int, time at which the mesh should be displayed; -1=always display (default)
         """
         from PIL import Image  # pip install pillow
+        if 'opengl' in kwargs:
+            warnings.warn("opengl argument is no longer needed in add_image")
 
         if isinstance(image, str):
             im = Image.open(str(image))
@@ -553,7 +557,6 @@ class Scene:
                 image = (image * 255).astype(dtype=np.uint8)
             im = Image.fromarray(image)
         if self.default_opencv != (z > 0):
-            print("z must be postive iff using OpenCV coordinates, flipping")
             z = -z
         if z < 0.0:
             # Flip image
@@ -565,10 +568,10 @@ class Scene:
             BOX = Image.Resampling.BOX
         else:
             BOX = Image.BOX
-        if max_image_size < image_wh[0]:
-            focal_vis = max_image_size / image_wh[0] * focal_length
-            vis_h = int(max_image_size * image_wh[1] / image_wh[0])
-            im = im.resize((max_image_size, vis_h), resample=BOX)
+        if image_size < image_wh[0]:
+            focal_vis = image_size / image_wh[0] * focal_length
+            vis_h = int(image_size * image_wh[1] / image_wh[0])
+            im = im.resize((image_size, vis_h), resample=BOX)
         else:
             focal_vis = focal_length
 
@@ -597,108 +600,6 @@ class Scene:
         self._update_bb(kwargs.get("translation", np.zeros(3)), *_st)
         self._check_args_used(name, kwargs)
 
-
-    def add_image(
-        self,
-        name: str,
-        image: Union[str, np.ndarray],
-        r: np.ndarray,
-        t: np.ndarray,
-        focal_length: float = 1111.11,
-        z: float = 0.3,
-        image_size: int = 64,
-        opengl: Optional[bool] = None,
-        **kwargs,
-    ):
-        """
-        Add an image (as plane mesh with vertex colors)
-
-        :param name: an identifier for this object
-        :param path: path to the image
-        :param r: (3,) or (4,) or (3, 3) or None, optional
-                  C2W rotations for each camera, either as axis-angle,
-                  xyzw quaternion, or rotation matrix
-        :param t: (3,) or None, optional
-                  C2W translations for each camera applied after rotation
-        :param z: the depth at which to draw the frustum far points.
-                  use negative values for OpenGL coordinates (original NeRF)
-                  or positive values for OpenCV coordinates (NSVF).
-                  If not given, tries to infer a good value. Else defaults to -0.3
-                  NOTE: kind of weirdly (but to be consistent
-                  with add_camera_frustum),for OpenGL, z needs to be negative,
-                  while for OpenCV it should be positive.
-        :param image_size: size of image for display.
-                           NOTE: do not make this too large or it may crash!
-        :param opengl: if True use OpenGL coordinates (NeRF default);
-                       else use OpenCV. Default: depends on if set_opencv()
-                       was used.
-        :param time: int, time at which the mesh should be displayed; -1=always display (default)
-        """
-        warnings.warn(
-            "nerfvis.scene.add_image is deprecated, please use the "
-            "much more efficient add_image_v2 instead")
-        if opengl is None:
-            opengl = not self.default_opencv
-        from PIL import Image  # pip install pillow
-
-        if isinstance(image, str):
-            im = Image.open(str(image))
-        else:
-            image = _to_np_array(image)
-            if image.dtype != np.uint8:
-                image = (image * 255).astype(dtype=np.uint8)
-            im = Image.fromarray(image)
-        image_wh = im.size
-        focal_vis = image_size / image_wh[0] * focal_length
-        vis_h = int(image_size * image_wh[1] / image_wh[0])
-        if hasattr(Image, "Resampling"):
-            # Pillow 10
-            BOX = Image.Resampling.BOX
-        else:
-            BOX = Image.BOX
-
-        im = im.resize((image_size, vis_h), resample=BOX)
-
-        grid = np.mgrid[:image_size, :vis_h] + 0.5
-        grid[0] -= image_size * 0.5
-        grid[1] -= vis_h * 0.5
-        grid /= focal_vis
-        grid = grid.transpose(2, 1, 0)
-        grid = np.concatenate([grid, np.ones_like(grid[..., :1])], -1) * z
-        if opengl:
-            grid[..., 1] *= -1.0
-
-        faces = np.empty(((image_size - 1) * (vis_h - 1), 2, 3), dtype=np.int32)
-        arrx = np.arange((image_size - 1))
-        arry = np.arange((vis_h - 1)) * image_size
-        arr = (arry[:, None] + arrx[None]).flatten()
-        faces[:, :, 0] = arr[:, None]
-        faces[:, 0, 1] = arr + image_size
-        faces[:, 0, 2] = arr + image_size + 1
-        faces[:, 1, 1] = arr + image_size + 1
-        faces[:, 1, 2] = arr + 1
-
-        im = np.array(im)[..., :3]
-
-        if r.ndim == 2 and r.shape[-1] == 3 and r.shape[-2] == 3:
-            # Shape is good already
-            pass
-        else:
-            r = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
-        t = _to_np_array(t).astype(np.float32)
-
-        grid_i = (r * grid.reshape(-1, 1, 3)).sum(-1) + t
-        grid_i = grid_i.astype(np.float32).copy()
-        self.add_mesh(
-            name,
-            grid_i,
-            faces=faces.reshape(-1, 3),
-            face_size=3,
-            vert_color=im.reshape(-1, 3).astype(np.float32) / 255.0,
-            unlit=True,
-            **kwargs,
-        )
-        self._check_args_used(name, kwargs)
 
     def add_camera_frustum(
         self,
@@ -788,7 +689,6 @@ class Scene:
         self.fields[_f(name, "z")] = np.float32(z)
 
         if self.default_opencv != (z > 0):
-            print("z must be postive iff using OpenCV coordinates, flipping")
             z = -z
 
         elif t is not None and len(t) > 1:

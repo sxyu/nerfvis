@@ -20,7 +20,7 @@ scene.add_camera_frustum(
     z=Z,
 )
 scene.add_image(
-    "My bulldozer image", bulldozer, r=R, t=t, focal_length=f, z=Z, opengl=False
+    "My bulldozer image", bulldozer, r=R, t=t, focal_length=f, z=Z
 )
 scene.set_opencv()
 scene.display(port=6006)
