@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Index &mdash; nerfvis 0.1.4 documentation</title>
+  <title>Index &mdash; nerfvis 0.1.10 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="#" />
     <link rel="search" title="Search" href="search.html" /> 
@@ -25,11 +25,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="index.html" class="icon icon-home"> nerfvis
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            nerfvis
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -37,7 +41,50 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="nerfvis.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nerfvis.html">Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nerfvis.html#nerfvis-scene">nerfvis.scene</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nerfvis.html#nerfvis.Scene"><code class="docutils literal notranslate"><span class="pre">Scene</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_cube"><code class="docutils literal notranslate"><span class="pre">Scene.add_cube()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_world_up"><code class="docutils literal notranslate"><span class="pre">Scene.set_world_up()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opencv"><code class="docutils literal notranslate"><span class="pre">Scene.set_opencv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opengl"><code class="docutils literal notranslate"><span class="pre">Scene.set_opengl()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opencv_world"><code class="docutils literal notranslate"><span class="pre">Scene.set_opencv_world()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opengl_world"><code class="docutils literal notranslate"><span class="pre">Scene.set_opengl_world()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_blender_world"><code class="docutils literal notranslate"><span class="pre">Scene.set_blender_world()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_title"><code class="docutils literal notranslate"><span class="pre">Scene.set_title()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_wireframe_cube"><code class="docutils literal notranslate"><span class="pre">Scene.add_wireframe_cube()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_arrow"><code class="docutils literal notranslate"><span class="pre">Scene.add_arrow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_sphere"><code class="docutils literal notranslate"><span class="pre">Scene.add_sphere()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_line"><code class="docutils literal notranslate"><span class="pre">Scene.add_line()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_lines"><code class="docutils literal notranslate"><span class="pre">Scene.add_lines()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_points"><code class="docutils literal notranslate"><span class="pre">Scene.add_points()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_mesh"><code class="docutils literal notranslate"><span class="pre">Scene.add_mesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_image"><code class="docutils literal notranslate"><span class="pre">Scene.add_image()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_images"><code class="docutils literal notranslate"><span class="pre">Scene.add_images()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_camera_frustum"><code class="docutils literal notranslate"><span class="pre">Scene.add_camera_frustum()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_mesh_from_file"><code class="docutils literal notranslate"><span class="pre">Scene.add_mesh_from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_axes"><code class="docutils literal notranslate"><span class="pre">Scene.add_axes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.remove"><code class="docutils literal notranslate"><span class="pre">Scene.remove()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.remove_all"><code class="docutils literal notranslate"><span class="pre">Scene.remove_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.clear"><code class="docutils literal notranslate"><span class="pre">Scene.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_volume"><code class="docutils literal notranslate"><span class="pre">Scene.add_volume()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_volume_from_npz"><code class="docutils literal notranslate"><span class="pre">Scene.add_volume_from_npz()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_nerf"><code class="docutils literal notranslate"><span class="pre">Scene.set_nerf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_nerf"><code class="docutils literal notranslate"><span class="pre">Scene.add_nerf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.write"><code class="docutils literal notranslate"><span class="pre">Scene.write()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.export"><code class="docutils literal notranslate"><span class="pre">Scene.export()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.display"><code class="docutils literal notranslate"><span class="pre">Scene.display()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.embed"><code class="docutils literal notranslate"><span class="pre">Scene.embed()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nerfvis.html#nerfvis-utils">nerfvis.utils</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nerfvis.html#nerfvis.utils.split_mat4"><code class="docutils literal notranslate"><span class="pre">split_mat4()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -53,8 +100,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>Index</li>
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Index</li>
       <li class="wy-breadcrumbs-aside">
       </li>
   </ul>
@@ -67,8 +114,7 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#_"><strong>_</strong></a>
- | <a href="#A"><strong>A</strong></a>
+ <a href="#A"><strong>A</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
  | <a href="#E"><strong>E</strong></a>
@@ -77,17 +123,11 @@
  | <a href="#W"><strong>W</strong></a>
  
 </div>
-<h2 id="_">_</h2>
-<table style="width: 100%" class="indextable genindextable"><tr>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="nerfvis.html#nerfvis.Scene.__init__">__init__() (Scene method)</a>
-</li>
-  </ul></td>
-</tr></table>
-
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="nerfvis.html#nerfvis.Scene.add_arrow">add_arrow() (Scene method)</a>
+</li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_axes">add_axes() (Scene method)</a>
 </li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_camera_frustum">add_camera_frustum() (Scene method)</a>
@@ -96,14 +136,16 @@
 </li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_image">add_image() (Scene method)</a>
 </li>
+      <li><a href="nerfvis.html#nerfvis.Scene.add_images">add_images() (Scene method)</a>
+</li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_line">add_line() (Scene method)</a>
 </li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_lines">add_lines() (Scene method)</a>
 </li>
-      <li><a href="nerfvis.html#nerfvis.Scene.add_mesh">add_mesh() (Scene method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="nerfvis.html#nerfvis.Scene.add_mesh">add_mesh() (Scene method)</a>
+</li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_mesh_from_file">add_mesh_from_file() (Scene method)</a>
 </li>
       <li><a href="nerfvis.html#nerfvis.Scene.add_nerf">add_nerf() (Scene method)</a>
@@ -166,15 +208,25 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="nerfvis.html#nerfvis.Scene">Scene (class in nerfvis)</a>
 </li>
+      <li><a href="nerfvis.html#nerfvis.Scene.set_blender_world">set_blender_world() (Scene method)</a>
+</li>
       <li><a href="nerfvis.html#nerfvis.Scene.set_nerf">set_nerf() (Scene method)</a>
+</li>
+      <li><a href="nerfvis.html#nerfvis.Scene.set_opencv">set_opencv() (Scene method)</a>
+</li>
+      <li><a href="nerfvis.html#nerfvis.Scene.set_opencv_world">set_opencv_world() (Scene method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="nerfvis.html#nerfvis.Scene.set_opencv">set_opencv() (Scene method)</a>
+      <li><a href="nerfvis.html#nerfvis.Scene.set_opengl">set_opengl() (Scene method)</a>
+</li>
+      <li><a href="nerfvis.html#nerfvis.Scene.set_opengl_world">set_opengl_world() (Scene method)</a>
 </li>
       <li><a href="nerfvis.html#nerfvis.Scene.set_title">set_title() (Scene method)</a>
 </li>
       <li><a href="nerfvis.html#nerfvis.Scene.set_world_up">set_world_up() (Scene method)</a>
+</li>
+      <li><a href="nerfvis.html#nerfvis.utils.split_mat4">split_mat4() (in module nerfvis.utils)</a>
 </li>
   </ul></td>
 </tr></table>

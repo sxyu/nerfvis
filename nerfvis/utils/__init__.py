@@ -225,4 +225,16 @@ def vol2plenoctree(
     return result
 
 
-__all__ = ("Rotation", "vol2plenoctree")
+def split_mat4(mat4: np.ndarray) -> Dict[str, np.ndarray]:
+    """
+    Tiny utility to split a 4x4 or 3x4 affine matrix into translation, rotation
+    outputs r, t
+    """
+    return {
+            "r": mat4[..., :3, :3],
+            "t": mat4[..., :3, 3],
+        }
+
+
+
+__all__ = ("Rotation", "vol2plenoctree", "split_mat4")

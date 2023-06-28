@@ -150,7 +150,10 @@ class Scene:
         else:
             self.set_opengl()
 
-    def _add_common(self, name, kwargs):
+    def _add_common(self, name : str, kwargs : Dict[str, Any]):
+        """
+        Helper to add common fields to the object such as time, color
+        """
         assert isinstance(name, str), "Name must be a string"
         if "time" in kwargs:
             self.fields[_f(name, "time")] = _to_np_array(kwargs["time"]).astype(
@@ -193,13 +196,20 @@ class Scene:
             del kwargs["vert_color"]
         return scale, translation
 
-    def _check_args_used(self, name, kwargs):
+    def _check_args_used(self, name : str, kwargs : Dict[str, Any]):
+        """
+        We delete kwargs as they are used. This is a helper to warn if any kwargs are left
+        """
         if len(kwargs):
             msg = (f"WARNING: Unused kwargs for {name}: {list(kwargs.keys())}, "
                           "might be a typo?")
             warnings.warn(msg)
 
-    def _update_bb(self, points, scale = None, translation = None):
+    def _update_bb(self, points : np.ndarray,
+                   scale : Optional[float] = None, translation : Optional[np.ndarray] = None):
+        """
+        Update the bounding box of the scene.
+        """
         # FIXME handle rotation
 
         if points.ndim == 2:
@@ -220,6 +230,29 @@ class Scene:
 
         self.bb_min = np.minimum(min_xyz, self.bb_min)
         self.bb_max = np.maximum(max_xyz, self.bb_max)
+
+    def _update_orientation_from_cams(self, R : utils.Rotation, t : Optional[np.ndarray] = None):
+        """
+        Update the global origin, camera directions from the camera poses.
+        """
+        rm = R.as_matrix()
+        # Infer world up direction from GT cams
+        ups = -rm[:, 1] if self.default_opencv else rm[:, 1]
+        world_up = np.mean(ups, axis=0)
+        world_up /= np.linalg.norm(world_up)
+
+        # Camera forward vector
+        forwards = rm[:, 2] if self.default_opencv else -rm[:, 2]
+        cam_forward = np.mean(forwards, axis=0)
+        cam_forward /= np.linalg.norm(cam_forward)
+
+        if t is not None:
+            # Set camera center of rotation (origin) for orbit
+            self.origin = np.mean(t, axis=0)
+
+        # Set camera position
+        self.world_up = world_up
+        self.cam_forward = cam_forward
 
     def add_cube(self, name: str = "cube", **kwargs):
         """
@@ -325,6 +358,76 @@ class Scene:
             **kwargs,
         )
 
+    def add_arrow(self, name: str,
+                  a: Union[np.ndarray, List[float]],
+                  b: Union[np.ndarray, List[float]],
+                  arrow_size: float = 0.12,
+                  update_bb: bool = False,
+                  **kwargs):
+        """
+        Add a basic arrow (currently made of lines)
+
+        :param name: an identifier for this object
+        :param a: (3,) start point
+        :param b: (3,) end point
+        :param arrow_size: float, size of arrow head
+        :param update_bb: bool, whether to update the bounding box, default False
+        :param color: (3,) color, default is orange (common param)
+        :param vert_color: (rings*sectors, 3) vertex color, optional advanced (common param)
+        :param translation: (3,), model translation (common param)
+        :param rotation: (3,), model rotation in axis-angle (common param)
+        :param scale:  float, scale, default 1.0 (common param)
+        :param visible: bool, whether mesh should be visible on init, default true
+                        (depends on GET parameter in web version) (common param)
+        :param unlit: bool, whether mesh should be rendered unlit (common param)
+        :param time: int, time at which the mesh should be displayed; -1=always display (default)
+                    (common param)
+        """
+        verts, segs = [], []
+        a = _to_np_array(a)
+        b = _to_np_array(b)
+
+        ab = b - a
+        length = float(np.linalg.norm(ab))
+        if length < 1e-9:
+            print(f"Arrow {name} length is zero, skipping")
+            return
+        ab /= length
+        x = np.array([1.0, 0.0, 0.0], dtype=np.float32)
+        if np.sum(ab * x) < 1e-3:
+            # ab is parallel to x, try z
+            x = np.array([0.0, 0.0, 1.0], dtype=np.float32)
+        perp = np.cross(ab, x)
+        perp /= np.linalg.norm(perp)
+
+        perp2 = np.cross(ab, perp)
+
+        delta = arrow_size * length
+        c = b - ab * delta * 1.5
+        verts = np.stack([
+            a,
+            b,
+            c + perp * delta,
+            c - perp * delta,
+            c + perp2 * delta,
+            c - perp2 * delta,
+        ], 0)
+        segs = np.array([
+            [0, 1],
+            [1, 2],
+            [1, 3],
+            [1, 4],
+            [1, 5],
+        ], dtype=np.int32)
+        self.add_lines(
+            name,
+            _to_np_array(verts).astype(dtype=np.float32),
+            segs=_to_np_array(segs),
+            update_bb=update_bb,
+            **kwargs,
+        )
+
+
     def add_sphere(
         self,
         name: str = "sphere",
@@ -364,7 +467,10 @@ class Scene:
             self._update_bb(p2, *_st)
         self._check_args_used(name, kwargs)
 
-    def add_line(self, name: str, a: np.ndarray, b: np.ndarray, update_bb: bool = True, **kwargs):
+    def add_line(self, name: str,
+                 a: Union[np.ndarray, List[float]],
+                 b: Union[np.ndarray, List[float]],
+                 update_bb: bool = True, **kwargs):
         """
         Add a single line segment from a to b
 
@@ -616,10 +722,14 @@ class Scene:
                    focal_length: float = 1111.11,
                    z: Optional[float] = None,
                    n_jobs: int = 16,
+                   update_view: bool = True,
+                   with_camera_frustum: bool = True,
+                   connect: bool = False,
+                   camera_color: Union[List[float], np.ndarray] = [1.0, 0.0, 0.0],
                    **kwargs
                ):
         """
-        Helper function to add multiple images using add_image multiple times.
+        Add multiple images using add_image multiple times.
         Affected by set_opencv and set_opengl (run before!).
         pillow required
 
@@ -632,7 +742,15 @@ class Scene:
         :param z: float, the size of the camera frustum (distance of image). If not given,
                   tries to infer from t. If t is size only 1, then z=0.3 is used
         :param n_jobs: int, number of parallel jobs to use to load images
+        :param with_camera_frustum: bool, whether to add camera frustum (lines) as well.
+                                    name will be <name_prefix>_frustums
+        :param connect: bool, whether to connect the camera frustum to the image
+                        (only if with_camera_frustum=True)
+        :param camera_color: color of the camera frustum
+                        (only if with_camera_frustum=True)
         :param update_bb: bool, whether to update the bounding box (default True)
+        :param update_view: bool, if true then updates the camera position, scene origin etc
+                            using these cameras
         :param translation: (3,), model translation (common param)
         :param rotation: (3,), model rotation in axis-angle (common param)
         :param scale:  float, scale, default 1.0 (common param)
@@ -652,6 +770,9 @@ class Scene:
             else:
                 z = 0.3
         assert z is not None
+        if len(images) == 0:
+            print(f"No images to add: {name_prefix}")
+            return
 
         if isinstance(images[0], str):
             # Load images in parallel for better speed
@@ -683,6 +804,24 @@ class Scene:
                 z=z,
                 **kwargs
             )
+
+        if with_camera_frustum:
+            self.add_camera_frustum(
+                f"{name_prefix}_frustums",
+                r=r,
+                t=t,
+                focal_length=focal_length,
+                z=z,
+                update_view=update_view,
+                image_width=images[0].shape[1],
+                image_height=images[0].shape[0],
+                connect=connect,
+                color=camera_color,
+                **kwargs
+            )
+        elif update_view and r is not None:
+            R = _rotation_from_auto(_to_np_array(r))
+            self._update_orientation_from_cams(R, t)
 
 
     def add_camera_frustum(
@@ -756,24 +895,7 @@ class Scene:
             self.fields[_f(name, "t")] = t.astype(np.float32)
 
         if update_view and R is not None:
-            rm = R.as_matrix()
-            # Infer world up direction from GT cams
-            ups = -rm[:, 1] if self.default_opencv else rm[:, 1]
-            world_up = np.mean(ups, axis=0)
-            world_up /= np.linalg.norm(world_up)
-
-            # Camera forward vector
-            forwards = rm[:, 2] if self.default_opencv else -rm[:, 2]
-            cam_forward = np.mean(forwards, axis=0)
-            cam_forward /= np.linalg.norm(cam_forward)
-
-            if t is not None:
-                # Set camera center of rotation (origin) for orbit
-                self.origin = np.mean(t, axis=0)
-
-            # Set camera position
-            self.world_up = world_up
-            self.cam_forward = cam_forward
+            self._update_orientation_from_cams(R, t)
 
         if z is None:
             if t is not None and len(t) > 1:
@@ -793,6 +915,7 @@ class Scene:
         if update_bb and t is not None:
             self._update_bb(t, *_st)
         self._check_args_used(name, kwargs)
+
 
     def add_mesh_from_file(
         self, path: str, name_suffix: str = "", center: bool = False, **kwargs
@@ -960,7 +1083,7 @@ class Scene:
             self._update_bb(np.array([radius, radius, radius]), *_st)
         self._check_args_used(name, kwargs)
 
-    def add_volume_from_npz(self, name: str, file: str, **kwargs):
+    def add_volume_from_npz(self, name: str, file: str, update_bb: bool = True, **kwargs):
         """
         Add a volume already saved as npz
         (for example, PlenOctree checkpoints downloaded from the website)
@@ -1021,6 +1144,7 @@ class Scene:
         sigma_multiplier: float = 1.0,
         chunk: int = 720720,
         device: str = "cuda:0",
+        update_bb: bool = True,
         **kwargs,
     ):
         """
@@ -1065,6 +1189,7 @@ class Scene:
         :param focal_length: float or Tuple (fx, fy), optional, focal length for weight thresholding
         :param image_width: float, optional, image width for weight thresholding
         :param image_height: float, optional, image height for weight thresholding
+        :param update_bb: bool, whether to update the bounding box (default True)
         :param translation: (3,), model translation (common param)
         :param rotation: (3,), model rotation in axis-angle (common param)
         :param nerf_scale:  float, scale, default 1.0;
@@ -1277,8 +1402,9 @@ class Scene:
                 kwargs["scale"] = kwargs["nerf_scale"]
                 del kwargs["nerf_scale"]
             _st = self._add_common(name, kwargs)
-            self._update_bb(center - radius, *_st)
-            self._update_bb(center + radius, *_st)
+            if update_bb:
+                self._update_bb(center - radius, *_st)
+                self._update_bb(center + radius, *_st)
             self.fields[name] = "volume"
             for k in tree_data:
                 self.fields[_f(name, k)] = tree_data[k]
@@ -1624,16 +1750,6 @@ window.addEventListener("volrend_ready", async function() {
         )
         html_file = os.path.join(dirname_rel, embed_name)
         display(IFrame(html_file, width, height))
-
-def split_mat4(mat4: np.ndarray) -> Dict[str, np.ndarray]:
-    """
-    Tiny utility to split a 4x4 or 3x4 affine matrix into translation, rotation
-    outputs r, t
-    """
-    return {
-            "r": mat4[..., :3, :3],
-            "t": mat4[..., :3, 3],
-        }
 
 def _imread(path: str) -> np.ndarray:
     """

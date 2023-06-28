@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Welcome to nerfvis’s documentation! &mdash; nerfvis 0.1.4 documentation</title>
+  <title>Welcome to nerfvis’s documentation! &mdash; nerfvis 0.1.10 documentation</title>
       <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
       <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
   <!--[if lt IE 9]>
     <script src="_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/jquery.js"></script>
-        <script src="_static/underscore.js"></script>
         <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
         <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -27,11 +27,15 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
         <div class="wy-side-nav-search" >
-            <a href="#" class="icon icon-home"> nerfvis
+
+          
+          
+          <a href="#" class="icon icon-home">
+            nerfvis
           </a>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
-    <input type="text" name="q" placeholder="Search docs" />
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
   </form>
@@ -39,7 +43,50 @@
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
               <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="nerfvis.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nerfvis.html">Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nerfvis.html#nerfvis-scene">nerfvis.scene</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nerfvis.html#nerfvis.Scene"><code class="docutils literal notranslate"><span class="pre">Scene</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_cube"><code class="docutils literal notranslate"><span class="pre">Scene.add_cube()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_world_up"><code class="docutils literal notranslate"><span class="pre">Scene.set_world_up()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opencv"><code class="docutils literal notranslate"><span class="pre">Scene.set_opencv()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opengl"><code class="docutils literal notranslate"><span class="pre">Scene.set_opengl()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opencv_world"><code class="docutils literal notranslate"><span class="pre">Scene.set_opencv_world()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_opengl_world"><code class="docutils literal notranslate"><span class="pre">Scene.set_opengl_world()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_blender_world"><code class="docutils literal notranslate"><span class="pre">Scene.set_blender_world()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_title"><code class="docutils literal notranslate"><span class="pre">Scene.set_title()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_wireframe_cube"><code class="docutils literal notranslate"><span class="pre">Scene.add_wireframe_cube()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_arrow"><code class="docutils literal notranslate"><span class="pre">Scene.add_arrow()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_sphere"><code class="docutils literal notranslate"><span class="pre">Scene.add_sphere()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_line"><code class="docutils literal notranslate"><span class="pre">Scene.add_line()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_lines"><code class="docutils literal notranslate"><span class="pre">Scene.add_lines()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_points"><code class="docutils literal notranslate"><span class="pre">Scene.add_points()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_mesh"><code class="docutils literal notranslate"><span class="pre">Scene.add_mesh()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_image"><code class="docutils literal notranslate"><span class="pre">Scene.add_image()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_images"><code class="docutils literal notranslate"><span class="pre">Scene.add_images()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_camera_frustum"><code class="docutils literal notranslate"><span class="pre">Scene.add_camera_frustum()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_mesh_from_file"><code class="docutils literal notranslate"><span class="pre">Scene.add_mesh_from_file()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_axes"><code class="docutils literal notranslate"><span class="pre">Scene.add_axes()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.remove"><code class="docutils literal notranslate"><span class="pre">Scene.remove()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.remove_all"><code class="docutils literal notranslate"><span class="pre">Scene.remove_all()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.clear"><code class="docutils literal notranslate"><span class="pre">Scene.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_volume"><code class="docutils literal notranslate"><span class="pre">Scene.add_volume()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_volume_from_npz"><code class="docutils literal notranslate"><span class="pre">Scene.add_volume_from_npz()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.set_nerf"><code class="docutils literal notranslate"><span class="pre">Scene.set_nerf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.add_nerf"><code class="docutils literal notranslate"><span class="pre">Scene.add_nerf()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.write"><code class="docutils literal notranslate"><span class="pre">Scene.write()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.export"><code class="docutils literal notranslate"><span class="pre">Scene.export()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.display"><code class="docutils literal notranslate"><span class="pre">Scene.display()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="nerfvis.html#nerfvis.Scene.embed"><code class="docutils literal notranslate"><span class="pre">Scene.embed()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nerfvis.html#nerfvis-utils">nerfvis.utils</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nerfvis.html#nerfvis.utils.split_mat4"><code class="docutils literal notranslate"><span class="pre">split_mat4()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 
         </div>
@@ -55,8 +102,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
-      <li>Welcome to nerfvis’s documentation!</li>
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Welcome to nerfvis’s documentation!</li>
       <li class="wy-breadcrumbs-aside">
             <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -94,7 +141,11 @@ Adding NeRF requires <code class="code docutils literal notranslate"><span class
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="nerfvis.html">Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nerfvis.html">Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nerfvis.html#nerfvis-scene">nerfvis.scene</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nerfvis.html#nerfvis-utils">nerfvis.utils</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </section>
