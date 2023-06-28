@@ -70,8 +70,9 @@ def _rotation_from_auto(r: np.ndarray,
         assert 3 > ref_t.ndim > 0, "ref_t must be (N, 3) or (3,)"
         if is_vectorized != (ref_t.ndim >= 2):
             # Legacy handling
-            warnings.warn(f"Expected {'vectorized' if is_vectorized else 'single'} input but "
-                          f"which is inconsistent with t which has {ref_t.ndim} dimensions. "
+            vec_str = 'vectorized' if is_vectorized else 'single'
+            warnings.warn(f"Expected {vec_str} input but this is inconsistent with "
+                          f"given translation with {ref_t.ndim} dimensions. "
                           f"We will fix all the shapes, but relying on this is not recommended.")
             if is_vectorized:
                 ref_t = ref_t[None]
