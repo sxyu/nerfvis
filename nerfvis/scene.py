@@ -20,93 +20,20 @@ _server_thds = []
 
 
 def _f(name: str, field: str):
+    """
+    Field naming convention.
+    Combine object name, object field name into global field name
+    """
     return name + "__" + field
 
-
-def _format_vec3(vec: np.ndarray):
-    return f"[{vec[0]}, {vec[1]}, {vec[2]}]"
-
-
-def _scipy_rotation_from_auto(rot: np.ndarray):
-    if rot.shape[-1] == 3:
-        q = utils.Rotation.from_rotvec(rot)
-    elif rot.shape[-1] == 4:
-        q = utils.Rotation.from_quat(rot)
-    elif rot.shape[-1] == 9:
-        q = utils.Rotation.from_matrix(rot.reshape(list(rot.shape[:-1]) + [3, 3]))
-    else:
-        raise NotImplementedError
-    return q
-
-
-def _angle_axis_rotate_vector_np(r: np.ndarray, v: np.ndarray):
+def _to_np_array(obj: Any) -> np.ndarray:
     """
-    Rotate each vector by corresponding axis-angle.
-    The formula is from Ceres-solver.
-    :param r: (B, 3) or (1, 3) axis-angle
-    :param v: (B, 3) or (1, 3) vectors to rotate
-    """
-    if len(v.shape) == 1 or v.shape[0] == 1:
-        v = np.broadcast_to(v, r.shape)
-    theta = np.linalg.norm(r, axis=-1)
-    good_mask = theta > 1e-15
-    good_mask_v = np.broadcast_to(good_mask, v.shape[:1])
-    bad_mask = ~good_mask
-    bad_mask_v = np.broadcast_to(bad_mask, v.shape[:1])
-    result = np.zeros_like(v)
-    v_good, v_bad = v[good_mask_v], v[bad_mask_v]
-    if v_good.size:
-        theta_good = theta[good_mask][..., None]
-        cos_theta, sin_theta = np.cos(theta_good), np.sin(theta_good)
-        axis = r[good_mask] / theta_good
-        perp = np.cross(np.broadcast_to(axis, v_good.shape), v_good)
-        dot = np.sum(axis * v_good, axis=-1, keepdims=True)
-        result[good_mask_v] = (
-            v_good * cos_theta + perp * sin_theta + axis * (dot * (1 - cos_theta))
-        )
-    if v_bad.size:
-        # From Ceres
-        result[bad_mask_v] = v_bad + np.cross(
-            np.broadcast_to(r[bad_mask], v_bad.shape), v_bad
-        )
-    return result
+    Tries to convert list-like and np array-like
+    and torch tensors to numpy array
 
+    :param obj: Object to convert. Can be list, numpy array, torch. tensor
 
-def _quaternion_rotate_vector_np(q: np.ndarray, pt: np.ndarray):
-    """
-    Rotate a point pt by a quaternion (xyzw, Hamilton) will be normalized
-    Derived from cere::UnitQuaternionRotatePoint (rotation.h)
-    :param q: (B, 4) xyzw, Hamilton convention quaternion
-    :param pt: (B, 3) 3D points
-    :return: (B, 3) R(q) pt
-    """
-    q = q / np.linalg.norm(q, axis=-1, keepdims=True)
-    uv = np.cross(q[..., :-1], pt) * 2
-    return pt + q[..., -1:] * uv + np.cross(q[..., :-1], uv)
-
-
-def _rotate_vector_np(rot: np.ndarray, pt: np.ndarray):
-    """
-    Rotate a vector, using either an axis-angle, quaternion (xyzw), or flattened rotation matrix
-    :param rot: (B, 3), (B, 4), or (B, 9), the rotations
-    :param pt: (B, 3), the 3D points
-    :return: (B, 3), rotated points
-    """
-    if rot.shape[-1] == 3:
-        return _angle_axis_rotate_vector_np(rot, pt)
-    elif rot.shape[-1] == 4:
-        return _quaternion_rotate_vector_np(rot, pt)
-    elif rot.shape[-1] == 9:
-        return np.matmul(rot.reshape(list(rot.shape[:-1]) + [3, 3]), pt[..., None])[
-            ..., 0
-        ]
-    else:
-        raise NotImplementedError
-
-
-def _to_np_array(obj) -> np.ndarray:
-    """
-    Convert list-like and np array-like and torch tensors to numpy array
+    :return: Numpy array
     """
     if not isinstance(obj, np.ndarray):
         if hasattr(obj, "cpu"):
@@ -121,47 +48,94 @@ def _to_np_array(obj) -> np.ndarray:
         arr = arr.copy()
     return np.ascontiguousarray(arr)
 
-
-def _standarize_rotation_to_rotvec(r: np.ndarray,
-                                   ref_t: Optional[np.ndarray] = None,
-                                   single_item: bool = False) -> np.ndarray:
+def _rotation_from_auto(r: np.ndarray,
+                        ref_t: Optional[np.ndarray] = None,
+                        is_vectorized: bool = True) -> utils.Rotation:
     """
-    Normalize all types of rotations to rotation vectors
+    Normalize all types of rotations as Rotation class
+
+    :param r: Rotation matrix (3, 3) or (9,) or quaternion (4,) or axis-angle (3,)
+              if is_vectorized, add a batch dimension
+    :param ref_t: Rotation matrix or quaternion or axis-angle
+    :param is_vectorized: Whether there should be a vectorized batch dimension
+
+    :return: Rotation class
     """
     r = _to_np_array(r)
     if ref_t is not None:
         ref_t = _to_np_array(ref_t)
-    if r.ndim == 1 or (r.ndim == 2 and (single_item or
-                      (ref_t is not None and ref_t.ndim == 1))):
-        # Make single rotation into a vector
-        # Special handlign for single (3, 3) ....
-        r = r[None]
-    if r.ndim == 3 and r.shape[1] == 3 and r.shape[2] == 3:
-        # Matrix
-        r = utils.Rotation.from_matrix(r).as_rotvec()
-    elif r.ndim == 2 and r.shape[1] == 4 and ref_t is not None:
-        # Quaternion
-        r = utils.Rotation.from_quat(r).as_rotvec()
-    r = r.astype(np.float32)
+    batch_dims = 0
+
+    if ref_t is not None:
+        assert 3 > ref_t.ndim > 0, "ref_t must be (N, 3) or (3,)"
+        if is_vectorized != (ref_t.ndim >= 2):
+            # Legacy handling
+            warnings.warn(f"Expected {'vectorized' if is_vectorized else 'single'} input but "
+                          f"which is inconsistent with t which has {ref_t.ndim} dimensions. "
+                          f"We will fix all the shapes, but relying on this is not recommended.")
+            if is_vectorized:
+                ref_t = ref_t[None]
+                if r.ndim == 1 or (r.ndim == 2 and r.shape[0] == r.shape[1] == 3):
+                    r = r[None]
+            else:
+                assert ref_t.shape[0] == 1, "Single input expected but translation has batch dim > 1"
+                ref_t = ref_t[0]
+                if r.ndim > 1 and not (r.ndim == 2 and r.shape[0] == r.shape[1] == 3):
+                    assert r.shape[0] == 1, "Non-vectorized translation (3,) but vectorized rotation (N, 3, 3) is not supported"
+                    r = r[0]
+
+    if is_vectorized:
+        batch_dims = 1
+
+        if ref_t is not None and ref_t.ndim == 2 and ref_t.shape[0] == 1:
+            if r.ndim == 1 or (r.ndim == 2 and r.shape[0] == r.shape[1] == 3):
+                # Legacy handling
+                warnings.warn("Translation is vectorized but rotation is not. For backwards "
+                              "compatibility we will add a dimension to rotation. "
+                              "Relying on this is not recommended.")
+                # Automatically add a dimension if t is given as (1, 3) and
+                # r is (3,), (4,), (9,) or (3, 3)
+                r = r[None]
+
+    # Vectorized rotation
+    if r.ndim == 2 + batch_dims:
+        # Rotation matrix as (N, 3, 3)
+        r = utils.Rotation.from_matrix(r.reshape(-1, 3, 3))
+    elif r.ndim == 1 + batch_dims:
+        if r.shape[-1] == 3:
+            # Axis-angle as (N, 3)
+            r = utils.Rotation.from_rotvec(r)
+        elif r.shape[-1] == 4:
+            # Quaternion as (N, 4)
+            r = utils.Rotation.from_quat(r)
+        elif r.shape[-1] == 9:
+            # Flattened rotation matrix as (N, (3, 3))
+            r = utils.Rotation.from_matrix(r.reshape(-1, 3, 3))
+        else:
+            raise NotImplementedError(f"Could not understand rotation of size {r.shape}")
+    else:
+        raise NotImplementedError(f"Could not understand rotation of dimension {r.ndim}")
     return r
 
 
 class Scene:
+    """
+    Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
+    Add objects using :code:`add_*` as seen below, then use
+    :code:`export()`/:code:`display()`/:code:`embed()` to create a
+    standalone web viewer you can open in a browser or embed in
+    a notebook.
+
+    - Single scene quick import:  `from nerfvis import scene`
+
+    - Multiple scenes:  `from nerfvis import Scene` then `scene = Scene('title')`
+
+    :param title: title to show when saving, default 'Scene'.
+                  You can change it later by setting scene.title = '...'.
+    :param default_opencv: whether to use OpenCV camera space (instead of OpenGL).
+                           This can be changed by scene.set_opencv() and scene.set_opengl().
+    """
     def __init__(self, title: str = "Scene", default_opencv: bool = False):
-        """
-        Holds radiance field/volume/mesh/point cloud/lines objects for 3D visualization.
-        Add objects using :code:`add_*` as seen below, then use
-        :code:`export()`/:code:`display()`/:code:`embed()` to create a
-        standalone web viewer you can open in a browser or embed in
-        a notebook.
-
-        - Single scene quick import:  `from nerfvis import scene`
-
-        - Multiple scenes:  `from nerfvis import Scene` then `scene = Scene('title')`
-
-        :param title: title to show when saving, default 'Scene'.
-                      You can change it later by setting scene.title = '...'.
-        """
         self.title = title
         self.fields: Dict["str", Any] = {}
 
@@ -193,10 +167,10 @@ class Scene:
             scale = kwargs["scale"]
             del kwargs["scale"]
         if "rotation" in kwargs:
-            self.fields[_f(name, "rotation")] = _standarize_rotation_to_rotvec(
+            self.fields[_f(name, "rotation")] = _rotation_from_auto(
                     kwargs["rotation"],
                     kwargs.get("translation"),
-                    single_item=True)[0]
+                    is_vectorized=False).as_rotvec().astype(np.float32)[0]
             del kwargs["rotation"]
         if "translation" in kwargs:
             self.fields[_f(name, "translation")] = np.array(
@@ -277,14 +251,14 @@ class Scene:
 
     def set_opencv(self):
         """
-        Use OpenCV world up ([0, -1, 0])
+        Use OpenCV world up ([0, -1, 0]). Affects all camera frustums and images added after
         """
         self.world_up = np.array([0.0, -1.0, 0.0])
         self.default_opencv = True
 
     def set_opengl(self):
         """
-        Use OpenGL world up ([0, 1, 0])
+        Use OpenGL world up ([0, 1, 0]). Affects all camera frustums and images added after
         """
         self.world_up = np.array([0.0, 1.0, 0.0])
         self.default_opencv = False
@@ -657,9 +631,11 @@ class Scene:
         if connect:
             self.fields[_f(name, "connect")] = 1
 
+        R = None
         if r is not None:
             assert t is not None, "r,t should be both set or both unset"
-            self.fields[_f(name, "r")] = _standarize_rotation_to_rotvec(r, ref_t=t)
+            R = _rotation_from_auto(r, ref_t=t, is_vectorized=True)
+            self.fields[_f(name, "r")] = R.as_rotvec().astype(np.float32)
         if t is not None:
             t = _to_np_array(t)
             assert r is not None, "r,t should be both set or both unset"
@@ -668,25 +644,25 @@ class Scene:
                 t = t[None]
             self.fields[_f(name, "t")] = t.astype(np.float32)
 
-        if update_view and r is not None:
+        if update_view and R is not None:
             # Infer world up direction from GT cams
-            ups = _rotate_vector_np(r, _to_np_array([0, -1.0, 0]))
+            ups = R.apply(np.array([0, -1.0, 0], dtype=np.float32))
             world_up = np.mean(ups, axis=0)
             world_up /= np.linalg.norm(world_up)
 
             # Camera forward vector
-            forwards = _rotate_vector_np(r, _to_np_array([0, 0, 1.0]))
+            forwards = R.apply(np.array([0, 0, 1.0], dtype=np.float32))
             cam_forward = np.mean(forwards, axis=0)
             cam_forward /= np.linalg.norm(cam_forward)
 
-            # Set camera center of rotation (origin) for orbit
-            self.origin = np.mean(t, axis=0)
+            if t is not None:
+                # Set camera center of rotation (origin) for orbit
+                self.origin = np.mean(t, axis=0)
 
             # Set camera position
             self.world_up = world_up
             self.cam_forward = cam_forward
 
-        self.fields[_f(name, "z")] = np.float32(z)
 
         if self.default_opencv != (z > 0):
             z = -z
@@ -695,7 +671,8 @@ class Scene:
             t = _to_np_array(t)
             alld = np.linalg.norm(t - t[0], axis=-1)
             mind = alld[alld > 0.0].min()
-            self.fields[_f(name, "z")] = np.float32(mind * 0.6)
+            z = mind * 0.6
+        self.fields[_f(name, "z")] = np.float32(z)
 
         if t is not None:
             self._update_bb(t, *_st)
@@ -990,11 +967,7 @@ class Scene:
         if r is not None and t is not None:
             c2w = np.eye(4, dtype=np.float32)[None].repeat(r.shape[0], axis=0)
             c2w[:, :3, 3] = t
-            if r.ndim == 3 and r.shape[-1] == 3 and r.shape[-2] == 3:
-                # No conversion needed
-                c2w[:, :3, :3] = r
-            else:
-                c2w[:, :3, :3] = _scipy_rotation_from_auto(_to_np_array(r)).as_matrix()
+            c2w[:, :3, :3] = _rotation_from_auto(_to_np_array(r), is_vectorized=True).as_matrix().astype(np.float32)
             c2w = torch.from_numpy(c2w).to(device=device)
         else:
             c2w = None
@@ -1308,6 +1281,12 @@ class Scene:
         )
         out_npz_fname = f"volrend.draw.npz"
         all_instructions.append(f'Volrend.set_title("{self.title}")')
+        def _format_vec3(vec: np.ndarray):
+            """
+            Format vec3 as text
+            """
+            return f"[{vec[0]}, {vec[1]}, {vec[2]}]"
+
         if world_up is not None:
             all_instructions.append(
                 "Volrend.set_world_up(" + _format_vec3(world_up) + ")"

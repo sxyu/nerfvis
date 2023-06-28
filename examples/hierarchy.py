@@ -5,8 +5,10 @@ from nerfvis import scene
 
 scene.add_cube("My cube/0", translation=[2, 0, 0])
 scene.add_cube("My cube/1", color=[1, 0, 0])
-scene.add_sphere("My sphere/0/0", color=[0, 1, 0], translation=[0, 2, 0])
-scene.add_sphere("My sphere/1", color=[0, 0, 1], translation=[0, 0, 2])
+
+# Move time slider to see spheres
+scene.add_sphere("My sphere/0/0", color=[0, 1, 0], translation=[0, 2, 0], time=1)
+scene.add_sphere("My sphere/1", color=[0, 0, 1], translation=[0, 0, 2], time=2)
 
 # Randomly throw in a volume for varienty
 density = 1.0 / (
@@ -16,5 +18,5 @@ density = 1.0 / (
     )
 )
 color = np.full(list(density.shape) + [3], fill_value=0.5, dtype=np.float32)
-scene.add_volume("My volume", density, color, scale=2.0, translation=[-2, 0, 0], time=2)
+scene.add_volume("My volume", density, color, scale=2.0, translation=[-2, 0, 0])
 scene.display(port=6006)
